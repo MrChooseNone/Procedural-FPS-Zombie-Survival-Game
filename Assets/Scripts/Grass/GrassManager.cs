@@ -18,7 +18,7 @@ public class GrassManager : NetworkBehaviour
                 Debug.Log("yey we got the grass renderer");
                 grassRenderer.playerTransform = playerObject.transform;
             }
-            yield return new WaitForSeconds(10f);
+            yield return new WaitForSeconds(30f);
             grassRenderer.terrain = Terrain.activeTerrain.terrainData;
             grassRenderer.BuildGrass();
         }

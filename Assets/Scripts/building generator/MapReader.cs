@@ -89,7 +89,7 @@ class MapReader : MonoBehaviour
             float miny = (float)MercatorProjection.latToY(bounds.MinLat);
             float maxy = (float)MercatorProjection.latToY(bounds.MaxLat);
 
-            groundPlane.transform.localScale = new Vector3((maxx - minx) / 2, 1, (maxy - miny) / 2);
+            //groundPlane.transform.localScale = new Vector3((maxx - minx) / 2, 1, (maxy - miny) / 2);
 
             IsReady = true;
     }

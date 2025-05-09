@@ -67,122 +67,177 @@ class BuildingMaker : InfrastructureBehaviour
         
 
         List<int> roofPointsRemoved = new List<int>();
+        
+        float maxHeight = float.MinValue;
+        Vector3 originOffset = origin - map.bounds.Centre;
+
+        for (int i = 0; i < way.NodeIDs.Count; i++){
+            OsmNode temp2 = map.nodes[way.NodeIDs[i]];
+            Vector3 tempS1 = temp2 - origin;
+            Vector3 worldBottom = new Vector3(tempS1.x + originOffset.x, 0, tempS1.z + originOffset.z);
+            float groundY = terrain.SampleHeight(worldBottom);
+
+            maxHeight = Mathf.Max(maxHeight, groundY); //track the highest point
+        }
+        float highestPoint = maxHeight + way.Height; // Add building height
 
         for (int i = 0; i < way.NodeIDs.Count; i++)
         {
-            //roof only
-            for(int k = i; k > -way.NodeIDs.Count; k--){
+            // Find roof points (r1, r2, r3)
+            OsmNode r1 = null, r2 = null, r3 = null;
 
-                if(!roofPointsRemoved.Contains((k - 1 + way.NodeIDs.Count) %way.NodeIDs.Count)){
-                    r1 = map.nodes[way.NodeIDs[(k - 1 + way.NodeIDs.Count) %way.NodeIDs.Count]];
+            // Backwards loop to find r1
+            for (int k = i; k >= 0; k--)
+            {
+                int idx = (k - 1 + way.NodeIDs.Count) % way.NodeIDs.Count;
+                if (!roofPointsRemoved.Contains(idx))
+                {
+                    r1 = map.nodes[way.NodeIDs[idx]];
                     break;
                 }
             }
-            OsmNode r2 = map.nodes[way.NodeIDs[i]];
-            
-            for(int j = i; j < way.NodeIDs.Count; j++){
-                if(!roofPointsRemoved.Contains((j+1)%way.NodeIDs.Count)){
-                    r3 = map.nodes[way.NodeIDs[(j+1)%way.NodeIDs.Count]];
+
+            r2 = map.nodes[way.NodeIDs[i]];
+
+            for (int j = i + 1; j < way.NodeIDs.Count; j++)
+            {
+                int idx = (j) % way.NodeIDs.Count;
+                if (!roofPointsRemoved.Contains(idx))
+                {
+                    r3 = map.nodes[way.NodeIDs[idx]];
                     break;
                 }
             }
-            //walls
+
+            // Wall nodes
             OsmNode w1 = map.nodes[way.NodeIDs[i]];
-            OsmNode w2 = map.nodes[way.NodeIDs[(i+1)%way.NodeIDs.Count]];
+            OsmNode w2 = map.nodes[way.NodeIDs[(i + 1) % way.NodeIDs.Count]];
 
-            Vector3 h1 = origin - map.bounds.Centre;
+            Vector3 s1 = w1 - origin;
+            Vector3 s2 = w2 - origin;
 
+            int subdivisions = 4;
+            float scaleFactor = 5f;
+            // float maxHeight = float.MinValue;
+
+            // for (int j = 0; j <= subdivisions; j++)
+            // {
+            //     float t = j / (float)subdivisions;
+            //     Vector3 wallPoint = Vector3.Lerp(s1, s2, t);
+
+            //     Vector3 worldBottom = new Vector3(wallPoint.x + originOffset.x, 0, wallPoint.z + originOffset.z);
+            //     float groundY = terrain.SampleHeight(worldBottom);
+
+            //     maxHeight = Mathf.Max(maxHeight, groundY); //track the highest point
+            // }
+
+            // highestPoint = maxHeight + way.Height; // Add building height
+
+            for (int j = 0; j <= subdivisions; j++)
+            {
+                float t = j / (float)subdivisions;
+                Vector3 wallPoint = Vector3.Lerp(s1, s2, t);
+
+                Vector3 worldBottom = new Vector3(wallPoint.x + originOffset.x, 0, wallPoint.z + originOffset.z);
+                float groundY = terrain.SampleHeight(worldBottom);
+
+                Vector3 bottom = new Vector3(wallPoint.x, groundY, wallPoint.z);
+                Vector3 top = new Vector3(wallPoint.x, highestPoint, wallPoint.z);
+
+                vectors.Add(bottom);
+                vectors.Add(top);
+
+                float meshWidth = Vector3.Distance(s1, s2) / subdivisions;
+                float meshHeight = way.Height;
+
+                uvs.Add(new Vector2(t * meshWidth / scaleFactor, 0));
+                uvs.Add(new Vector2(t * meshWidth / scaleFactor, meshHeight / scaleFactor));
+
+                Vector3 wallNormal = Vector3.Cross(Vector3.up, s2 - s1).normalized;
+                normals.Add(wallNormal);
+                normals.Add(wallNormal);
+
+                if (j > 0)
+                {
+                    int idx = vectors.Count;
+                    int b1 = idx - 4;
+                    int t1 = idx - 3;
+                    int b2 = idx - 2;
+                    int t2 = idx - 1;
+
+                    indices.Add(b1); indices.Add(b2); indices.Add(t1);
+                    indices.Add(t1); indices.Add(b2); indices.Add(t2);
+                }
+            }
+
+            
+            
+
+            // Prepare vertices for roof and top walls
             Vector3 v1 = w1 - origin;
             Vector3 v2 = w2 - origin;
-            v1.y = terrain.SampleHeight(new Vector3(v1.x + h1.x, 0, v1.z + h1.z));
-            v2.y = terrain.SampleHeight(new Vector3(v2.x + h1.x, 0, v2.z + h1.z));
+            float originalY1 = v1.y;
+            float originalY2 = v2.y;
+            v1.y = terrain.SampleHeight(new Vector3(v1.x + originOffset.x, 0, v1.z + originOffset.z));
+            v2.y = terrain.SampleHeight(new Vector3(v2.x + originOffset.x, 0, v2.z + originOffset.z));
 
-            
-            Vector3 v3 = v1 + new Vector3(0, way.Height, 0);
-            Vector3 v4 = v2 + new Vector3(0, way.Height, 0);
-            //for roof only
-            if(r1 != null || r2 != null || r3 !=null){
-                
+            Vector3 v3 = v1 + new Vector3(0, way.Height + originalY1, 0);
+            Vector3 v4 = v2 + new Vector3(0, way.Height + originalY2, 0);
+
+            Vector3 v8 = new Vector3(0, way.Height, 0);
+            Vector3 v9 = new Vector3(0, way.Height, 0);
+            Vector3 v10 = new Vector3(0, way.Height, 0);
+
+            if (r1 != null && r2 != null && r3 != null)
+            {
                 Vector3 v5 = r1 - origin;
                 Vector3 v6 = r2 - origin;
                 Vector3 v7 = r3 - origin;
+
                 v8 = v5 + new Vector3(0, way.Height, 0);
                 v9 = v6 + new Vector3(0, way.Height, 0);
                 v10 = v7 + new Vector3(0, way.Height, 0);
             }
-            else{
-                
-                v8 = new Vector3(0, way.Height, 0);
-                v9 = new Vector3(0, way.Height, 0);
-                v10 = new Vector3(0, way.Height, 0);
-            }
 
-            vectors.Add(v1); //nere
-            vectors.Add(v2);  //nere
-            vectors.Add(v3);  
-            vectors.Add(v4);  
-            vectors.Add(v8);  ///uppe tillbaka ett steg
-            vectors.Add(v9);  //uppe den som man kollar
-            vectors.Add(v10);  //uppe framåt ett steg
+            vectors.Add(v1);
+            vectors.Add(v2);
+            vectors.Add(v3);
+            vectors.Add(v4);
+            vectors.Add(v8);
+            vectors.Add(v9);
+            vectors.Add(v10);
 
-            float meshWidth = Vector3.Distance(v1, v2);
-            float meshHeight = Vector3.Distance(v1, v3);
+            float roofMeshWidth = Vector3.Distance(v1, v2);
+            float roofMeshHeight = Vector3.Distance(v1, v3);
 
-            float scaleFactor = 5f; // Adjust this to control texture tiling
             uvs.Add(new Vector2(0, 0));
-            uvs.Add(new Vector2(meshWidth / scaleFactor, 0)); 
-            uvs.Add(new Vector2(0, meshHeight / scaleFactor));
-            uvs.Add(new Vector2(meshWidth / scaleFactor, meshHeight / scaleFactor));
+            uvs.Add(new Vector2(roofMeshWidth / scaleFactor, 0));
+            uvs.Add(new Vector2(0, roofMeshHeight / scaleFactor));
+            uvs.Add(new Vector2(roofMeshWidth / scaleFactor, roofMeshHeight / scaleFactor));
 
-            uvs.Add(new Vector2(0.5f, 0));  // Example UV for the roof
-            uvs.Add(new Vector2(0.5f, 1));  // Example UV for the roof
-            uvs.Add(new Vector2(0.25f, 0.5f)); // Example UV for another part of the roof
-
+            uvs.Add(new Vector2(0.5f, 0));
+            uvs.Add(new Vector2(0.5f, 1));
+            uvs.Add(new Vector2(0.25f, 0.5f));
 
             normals.Add(-Vector3.forward);
             normals.Add(-Vector3.forward);
             normals.Add(-Vector3.forward);
             normals.Add(-Vector3.forward);
-            normals.Add(Vector3.up);  // Assuming roof normals are facing up
-            normals.Add(Vector3.up);  // Assuming roof normals are facing up
-            normals.Add(Vector3.up);  // Assuming roof normals are facing up
+            normals.Add(Vector3.up);
+            normals.Add(Vector3.up);
+            normals.Add(Vector3.up);
 
-            int idx1, idx2, idx3, idx4, idx5, idx6, idx7;
-            idx7 = vectors.Count - 1; //v10
-            idx6 = vectors.Count - 2; //v9
-            idx5 = vectors.Count - 3; //v8
-            idx4 = vectors.Count - 4; //v4
-            idx3 = vectors.Count - 5; //v3
-            idx2 = vectors.Count - 6; //v2
-            idx1 = vectors.Count - 7; //v1
+            int idx7 = vectors.Count - 1;
+            int idx6 = vectors.Count - 2;
+            int idx5 = vectors.Count - 3;
+            int idx4 = vectors.Count - 4;
+            int idx3 = vectors.Count - 5;
+            int idx2 = vectors.Count - 6;
+            int idx1 = vectors.Count - 7;
 
-            // first triangle v1, v3, v2
-            indices.Add(idx1);
-            indices.Add(idx3);
-            indices.Add(idx2);
+    // Optionally add triangle indices for roof or other polygons here
 
-            // second         v3, v4, v2
-            indices.Add(idx3);
-            indices.Add(idx4);
-            indices.Add(idx2);
 
-            // third          v2, v3, v1
-            indices.Add(idx2);
-            indices.Add(idx3);
-            indices.Add(idx1);
-
-            // fourth         v2, v4, v3
-            indices.Add(idx2);
-            indices.Add(idx4);
-            indices.Add(idx3);
-
-            if(IsEar(v8, v9, v10, vectors)){
-                indices.Add(idx5);
-                indices.Add(idx7);
-                indices.Add(idx6);
-                roofPointsRemoved.Add(i);
-                Debug.Log("is ear");
-            }
 
             // And now the roof triangles
         //     indices.Add(0);
