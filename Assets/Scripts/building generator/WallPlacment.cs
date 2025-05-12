@@ -6,6 +6,7 @@ class WallPlacement : InfrastructureBehaviour
 {
     public Material WallMaterial;
     public GameObject WallPrefab;
+     public bool isFinished = false;
 
     protected override void OnObjectCreated(OsmWay way, Vector3 origin, List<Vector3> vectors, List<Vector3> normals, List<Vector2> uvs, List<int> indices)
     {
@@ -30,5 +31,6 @@ class WallPlacement : InfrastructureBehaviour
             
 
         }
+        isFinished = true;
     }
 }

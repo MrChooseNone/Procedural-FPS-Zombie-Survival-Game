@@ -41,6 +41,7 @@ class RoadMaker : InfrastructureBehaviour
     }
     public PrefabProbability[] prefabProbabilities;
     GameObject[] randomPrefab = new GameObject[10];
+    public bool isFinished = false;
 
     
     IEnumerator Start()
@@ -61,6 +62,7 @@ class RoadMaker : InfrastructureBehaviour
             CreateObject(way, roadMaterial, way.Name, lightPost, randomPrefab);
             yield return null;
         }
+        isFinished = true;
     }
     
     

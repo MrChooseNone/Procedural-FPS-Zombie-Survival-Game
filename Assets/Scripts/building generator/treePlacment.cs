@@ -2,6 +2,7 @@ using UnityEngine;
 using MapMaker;
 using System.Collections;
 using System.Collections.Generic;
+using Mirror;
 
 
 
@@ -20,6 +21,7 @@ class TreePlacement : InfrastructureBehaviour
         public float probability;  // Probability of spawning the prefab
     }
     public PrefabProbability[] prefabProbabilities;
+     public bool isFinished = false;
 
 
     //protected new MapReader map;
@@ -51,6 +53,8 @@ class TreePlacement : InfrastructureBehaviour
 
             yield return null;
         }
+        yield return new WaitForSeconds(3f);
+        isFinished = true;
     }
 
     private void PlaceTrees(OsmWay way)
@@ -145,7 +149,8 @@ public void SpawnRandomPrefab(Vector3 pos, Transform parent)
 
             if (randomValue <= cumulativeProbability)
             {
-                Instantiate(item.prefab, pos, Quaternion.identity, parent);  // Spawn prefab at current position
+                GameObject temp = Instantiate(item.prefab, pos, Quaternion.identity, parent);  // Spawn prefab at current position
+                NetworkServer.Spawn(temp);
                 break;
             }
         }

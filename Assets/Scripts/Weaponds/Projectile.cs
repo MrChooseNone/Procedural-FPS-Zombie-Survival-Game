@@ -144,6 +144,7 @@ public class ProjectileBullet : NetworkBehaviour
 					if(zombie != null){
 						zombie.followTime = zombieFollowTime;
 						zombie.closestPlayer = shooterIdent.gameObject;
+						zombie.StartFollowingPlayer();
 					}
 					if(tag != null){
 						Debug.Log("dismember: call");

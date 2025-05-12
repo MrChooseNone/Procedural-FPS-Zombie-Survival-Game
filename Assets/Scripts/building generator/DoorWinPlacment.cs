@@ -84,9 +84,10 @@ public class DoorWinPlacment : NetworkBehaviour
                             temp.y = terrain.SampleHeight(temp);
                             
                             Debug.Log("Spawning door...");
+                            
                             GameObject door = Instantiate(doorPrefab, temp, Quaternion.LookRotation(normal));
                             NetworkServer.Spawn(door);
-                            door.transform.SetParent(building.transform);
+                            //door.transform.SetParent(building.transform);
                             placedPositions.Add(temp);
                             isDoor = true;
                         }

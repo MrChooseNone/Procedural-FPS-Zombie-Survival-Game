@@ -1,3 +1,4 @@
+using System.Collections;
 using Mirror;
 using UnityEngine;
 using UnityEngine.AI;
@@ -21,10 +22,7 @@ public class DefendNPC : NetworkBehaviour
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
-        Terrain terrain = Terrain.activeTerrain;
-        Vector3 pos = transform.position;
-        pos.y = terrain.SampleHeight(pos) + terrain.GetPosition().y;
-        transform.position = pos;
+        StartCoroutine(DelaySpawn(gameObject));
 
 
     }
@@ -61,5 +59,16 @@ public class DefendNPC : NetworkBehaviour
             followTarget = player;
         else if (state == NPCState.MoveToPosition)
             targetPosition = position;
+    }
+
+    public IEnumerator DelaySpawn(GameObject player){
+        yield return new WaitForSeconds(3f);
+        Terrain terrain = Terrain.activeTerrain;
+        Vector3 pos = transform.position;
+        pos.y = terrain.SampleHeight(pos) + terrain.GetPosition().y;
+        transform.position = pos;
+        player.transform.position = pos;
+        
+
     }
 }

@@ -104,6 +104,7 @@ public class WeaponController : NetworkBehaviour
     private bool canCombo = false;
     public float attackRadius = 1.2f;
     public float attackDistance = 2.5f; // Adjust to match sword reach
+    private SoundEmitter soundEmitter;
     
     
 
@@ -219,6 +220,8 @@ public class WeaponController : NetworkBehaviour
         // Hide gun on the ground (disable physics)
         inventory = player.GetComponent<InventoryManager1>();
         Debug.Log("weapon inventory: "+ inventory);
+
+        soundEmitter = player.GetComponent<SoundEmitter>();
         
         RpcSetGunState(false);
         RpcPickup(player);
@@ -282,6 +285,7 @@ public class WeaponController : NetworkBehaviour
         netIdentity.RemoveClientAuthority();
         RpcSetGunState(true);
         inventory = null;
+        soundEmitter = null;
     }
 
     [Command]
@@ -427,6 +431,7 @@ public class WeaponController : NetworkBehaviour
             bullet.GetComponent<ProjectileBullet>().SetShooter(identityPlayer);
             RpcPlayFireAnimation(0);
             spawnCasing();
+            soundEmitter.EmittSound(50);
         } else 
         {
             Debug.Log("melee attack " + player);

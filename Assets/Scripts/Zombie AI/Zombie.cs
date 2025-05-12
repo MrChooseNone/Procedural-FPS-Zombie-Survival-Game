@@ -11,6 +11,7 @@ using System.Linq;
 public class ZombieAI : NetworkBehaviour, IDamageble
 {
     public float perceptionRange = 10f;   // Distance within which the zombie detects the player
+    public float perceptionAngle = 120f;
     //public float spawnRange = 50f;        // Range within which the zombie can spawn
     public float followSpeed = 3.5f;      // Speed at which the zombie follows the player
 
@@ -97,6 +98,7 @@ public class ZombieAI : NetworkBehaviour, IDamageble
     public int explosionDamage = 20;
     public bool hasExploaded = false;
     private NetworkIdentity networkZombieId;
+    public LayerMask obstacleMask;
 
     private CustomNetworkManager Manager{
 
@@ -198,7 +200,15 @@ public class ZombieAI : NetworkBehaviour, IDamageble
 
             if (distanceToPlayer <= perceptionRange && !isFollowing)
             {
-                StartFollowingPlayer();
+                Vector3 dirToPlayer = (closestPlayer.transform.position - transform.position).normalized;
+                float angleBetween = Vector3.Angle(transform.forward, dirToPlayer);
+                if(angleBetween < perceptionAngle / 2f){
+                    // Raycast to check for obstacles
+                    if (!Physics.Raycast(transform.position, dirToPlayer, distanceToPlayer, obstacleMask))
+                    {
+                        StartFollowingPlayer();
+                    }
+                }
             }
             else if (distanceToPlayer > perceptionRange && isFollowing && followTime <= 0)
             {

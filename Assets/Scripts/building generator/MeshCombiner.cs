@@ -1,15 +1,28 @@
 using System.Collections;
 using System.Collections.Generic;
+using Mirror;
+using Unity.VisualScripting;
 using UnityEngine;
 
-public class MeshChunkCombiner : MonoBehaviour
+class MeshChunkCombiner : NetworkBehaviour
 {
+    public BuildingMaker buildingMaker;
+    public RoadMaker roadMaker;
+    public TreePlacement treePlacement;
+    public WallPlacement wallPlacement;
+    public Placement fencePlacement;
+
     
     public int chunkSize = 500;           // Objects per combined mesh
     IEnumerator Start()
     {
-        yield return new WaitForSeconds(60f);
-        
+       
+        // yield return new WaitForSeconds(60f);
+        while (!buildingMaker.isFinished && !roadMaker.isFinished && !treePlacement.isFinished && !wallPlacement.isFinished && !fencePlacement.isFinished)
+        {
+            yield return new WaitForSeconds(1f);
+        }
+        yield return new WaitForSeconds(20f);
         CombineByTag("Building", "BuildingChunk");
         CombineByTag("Road", "RoadChunk");
         CombineByTag("Bush", "BushChunk");
@@ -17,6 +30,20 @@ public class MeshChunkCombiner : MonoBehaviour
         CombineByTag("Tree", "TreeChunk");
         //CombineByTag("Lamp", "LampChunk");
         CombineByTag("City", "CityChunk");
+        yield return new WaitForSeconds(30f);
+        GrassManager localGrassManager = NetworkClient.localPlayer?.GetComponent<GrassManager>();
+        
+        if (localGrassManager != null)
+        {
+            localGrassManager.spawnGrass();
+        }
+        
+        yield return new WaitForSeconds(20f);
+        LoadingScreenManager localPlayer = NetworkClient.localPlayer?.GetComponent<LoadingScreenManager>();
+        if (localPlayer != null)
+        {
+            localPlayer.HideLoadingScreen();
+        }
     }
 
     
@@ -49,6 +76,7 @@ public class MeshChunkCombiner : MonoBehaviour
 
             GameObject chunk = new GameObject($"{chunkPrefix}_Chunk_{chunkIndex}");
             chunk.transform.parent = this.transform;
+            chunk.layer = 16;
 
             Mesh combinedMesh = new Mesh();
             combinedMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
@@ -62,6 +90,7 @@ public class MeshChunkCombiner : MonoBehaviour
 
             MeshCollider collider = chunk.AddComponent<MeshCollider>();
             collider.sharedMesh = combinedMesh;
+
 
 
             current += count;
