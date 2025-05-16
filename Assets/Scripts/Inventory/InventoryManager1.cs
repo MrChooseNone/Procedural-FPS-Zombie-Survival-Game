@@ -1,10 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
+
 using Mirror;
 using System.Collections.Generic;
-using TMPro;
-using Unity.VisualScripting.Dependencies.Sqlite;
+
 
 public class InventoryManager1 : NetworkBehaviour
 {
@@ -118,7 +117,7 @@ public class InventoryManager1 : NetworkBehaviour
 
 
 
-    [Command]
+    [Command(requiresAuthority = false)]
     public void CmdUpdateStack(ItemStack existingStack, InventorySlot currSlot)
     {
         RpcUpdateStack(connectionToClient,existingStack, currSlot);
@@ -363,7 +362,7 @@ private void RpcUpdateItemOnClient(NetworkConnectionToClient target, int indexSl
         networkIdentity.AssignClientAuthority(connectionToClient);
     }
 
-    [Command]
+    [Command(requiresAuthority = false)]
     public void CmdRemoveItem(string uniqueKey, int amount)
     {
         RpcBeforeRemoveItem(connectionToClient, uniqueKey, amount);

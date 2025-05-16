@@ -41,6 +41,7 @@ class RoadMaker : InfrastructureBehaviour
     }
     public PrefabProbability[] prefabProbabilities;
     GameObject[] randomPrefab = new GameObject[10];
+    public GameObject[] carPrefabs = new GameObject[10];
     public bool isFinished = false;
 
     
@@ -58,8 +59,9 @@ class RoadMaker : InfrastructureBehaviour
         {
             yield return StartCoroutine(CreatePrefabArray());
             Roadflag = true;
-           
-            CreateObject(way, roadMaterial, way.Name, lightPost, randomPrefab);
+            
+            CreateObject(way, roadMaterial, way.Name, lightPost, randomPrefab,carPrefabs);
+            
             yield return null;
         }
         isFinished = true;

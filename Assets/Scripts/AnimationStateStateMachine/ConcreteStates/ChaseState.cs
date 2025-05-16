@@ -36,7 +36,7 @@ public class ChaseState : EnemyState
         float speedMultiplier = Mathf.Clamp01(1 - (enemy.distanceToPlayer / enemy.perceptionRange)); 
         enemy.navAgent.speed = Mathf.Lerp(2f, enemy.followSpeed, speedMultiplier);
         
-        if(enemy != null && enemy.navAgent != null && enemy.closestPlayer != null && enemy.navGen.isNavMesh){
+        if(enemy != null && enemy.navAgent != null && enemy.closestPlayer != null && enemy.navGen.isNavMesh && enemy.navAgent.isActiveAndEnabled){
 
             enemy.navAgent.SetDestination(enemy.closestPlayer.transform.position);
         }

@@ -1,12 +1,11 @@
 using UnityEngine;
-using UnityEngine.UI;
+
 using UnityEngine.EventSystems;
-using System.Collections.Generic;
+
 using Mirror;
-using UnityEngine.UIElements;
+
 using UnityEngine.InputSystem;
-using NUnit.Framework.Constraints;
-using Mono.Cecil;
+
 
 public class InventoryItem : NetworkBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
@@ -248,8 +247,8 @@ public class InventoryItem : NetworkBehaviour, IBeginDragHandler, IDragHandler, 
             }
         
 
-        if(inventoryContainer != null) RpcRemoveFromInventory(player.connectionToClient, amount, quantity, inventoryContainer);
-        else RpcRemoveFromInventory(player.connectionToClient, amount, quantity, null);
+        if(inventoryContainer != null) RpcRemoveFromInventory(inventoryManager.connectionToClient, amount, quantity, inventoryContainer);
+        else RpcRemoveFromInventory(inventoryManager.connectionToClient, amount, quantity, null);
     }
     
     [TargetRpc]

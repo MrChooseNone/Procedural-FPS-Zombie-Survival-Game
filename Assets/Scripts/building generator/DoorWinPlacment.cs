@@ -26,7 +26,7 @@ public class DoorWinPlacment : NetworkBehaviour
         // }
     }
 
-    void Update()
+    void LateUpdate()
     {
         if (buildingmaker != null && buildingmaker.isFinished == true && isSpawned == false)
         {

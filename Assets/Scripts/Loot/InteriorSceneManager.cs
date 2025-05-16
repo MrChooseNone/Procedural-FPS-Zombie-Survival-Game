@@ -6,13 +6,21 @@ using System.Collections.Generic;
 
 public class InteriorSceneManager : NetworkBehaviour
 {
-    public static InteriorSceneManager Instance;
+    public static InteriorSceneManager Instance { get; private set; }
 
     private HashSet<string> loadedScenes = new HashSet<string>();
 
     private void Awake()
     {
-        if (Instance == null) Instance = this;
+        // if another instance already exists, destroy this one
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
     }
 
     [Server]

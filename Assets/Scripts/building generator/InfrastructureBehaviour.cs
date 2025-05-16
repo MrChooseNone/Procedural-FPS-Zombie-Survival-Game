@@ -76,7 +76,7 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
 
   
     [Server]
-    protected void CreateObject(OsmWay way, Material mat, string objectName, GameObject prefab = null, GameObject[] prefabArray= null)
+    protected void CreateObject(OsmWay way, Material mat, string objectName, GameObject prefab = null, GameObject[] prefabArray= null, GameObject[] carArray= null)
     {
         // Make sure we have some name to display
         objectName = string.IsNullOrEmpty(objectName) ? "OsmWay" : objectName;
@@ -90,7 +90,7 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
                 spawnMesh(way, localOrigin, objectName, mat);
                 StartCoroutine(Delay());
                 
-                SpawnPrefabs(way, localOrigin, prefab, objectName, true, prefabArray);
+                SpawnPrefabs(way, localOrigin, prefab, objectName, true, prefabArray,carArray);
                 
                 
             }else{
@@ -126,7 +126,6 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
             MeshCollider mc = go.AddComponent<MeshCollider>();
 
             // Apply the material
-            mr.material = mat;
 
             // Create the collections for the object's vertices, indices, UVs etc.
             List<Vector3> vectors = new List<Vector3>();
@@ -149,6 +148,7 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
             //mf.mesh.RecalculateNormals();
 
             mc.sharedMesh = mf.mesh;
+            mr.material = mat;
             //AdjustBuildingHeight(go);
 
             if (Rmaker.Roadflag == true){
@@ -167,7 +167,7 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
             NetworkServer.Spawn(go);
     }
 
-    private void SpawnPrefabs(OsmWay way, Vector3 localOrigin, GameObject prefab, string objectName, bool isRoad = false, GameObject[] prefabArray = null){
+    private void SpawnPrefabs(OsmWay way, Vector3 localOrigin, GameObject prefab, string objectName, bool isRoad = false, GameObject[] prefabArray = null, GameObject[] carArray= null){
         GameObject go;
         
             for (int i = 1; i < way.NodeIDs.Count; i++)
@@ -186,7 +186,7 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
                 // Define the spacing between each prefab instance along the segment
                 float spacing = 5;
                 if(isRoad){
-                    spacing = 20f;
+                    spacing = Random.Range(15, 30);
                 }else{
 
                     spacing = 2.5f; // You can adjust this value as needed
@@ -200,34 +200,67 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
                     Vector3 position = Vector3.Lerp(start, end, (float)j / numPrefabs);
 
                     // Calculate direction (rotation) by looking from start to end point
-                    Quaternion rotation = Quaternion.LookRotation(diff);
-                    Quaternion rotatedRotation = rotation * Quaternion.Euler(0, 90, 0); // Rotate by 90 degrees around Y-axis
+                    //Quaternion rotation = Quaternion.LookRotation(diff);
+                    //Quaternion rotatedRotation = rotation * Quaternion.Euler(0, 90, 0); // Rotate by 90 degrees around Y-axis
 
                     // Instantiate the prefab at the correct position and rotation
                     
                     Vector3 newPos = position + (localOrigin - map.bounds.Centre);
-                    
-                    float terrainHeight = terrain.SampleHeight(newPos);
-                    newPos.y = terrainHeight;
+                    Vector3 raypos = newPos;
+                    float terrainHeightray = terrain.SampleHeight(raypos);
+                    raypos.y = terrainHeightray;
+                    Vector3 rayOrigin = raypos + Vector3.up * 10f;
+                    if (Physics.Raycast(rayOrigin, Vector3.down, out var hit, 20f))
+                    {
+                        Vector3 terrainPoint = hit.point;
+                        Vector3 terrainNormal = hit.normal;
 
-                    
-                    if(isRoad){
-                        Vector3 offset = Vector3.Cross(diff, Vector3.up).normalized * 5f; // Offset 5 units to the side
-                        Vector3 movedPos = newPos + offset;
-                        
-                        if(IsValidTreePosition(movedPos)){
-                            
+                        // build a rotation that respects forward & slope
+                        Quaternion alignedRot = Quaternion.LookRotation(diff, terrainNormal);
+
+
+                        if (isRoad)
+                        {
+                            if (Random.Range(0f, 1f) <= 0.2f)
+                            {
+                                int randomCar = Random.Range(0, carArray.Length);
+
+                                Vector3 carPos = newPos;
+                                float terrainHeightCar = terrain.SampleHeight(carPos);
+                                carPos.y = terrainHeightCar;
+                                if (IsValidTreePosition(carPos))
+                                {
+
+                                    go = Instantiate(carArray[randomCar], carPos, alignedRot, parent);
+
+                                    NetworkServer.Spawn(go);
+                                    go.name = objectName;
+                                }
+                            }
+
                             int random = Random.Range(0, prefabArray.Length);
-                            go = Instantiate(prefabArray[random], movedPos, rotatedRotation, parent);
-                            
+                            Vector3 offset = Vector3.Cross(diff, Vector3.up).normalized * 5f; // Offset 5 units to the side
+
+                            Vector3 movedPos = newPos + offset;
+                            float terrainHeight = terrain.SampleHeight(movedPos);
+                            movedPos.y = terrainHeight;
+
+                            if (IsValidTreePosition(movedPos))
+                            {
+
+                                go = Instantiate(prefabArray[random], movedPos, alignedRot, parent);
+
+                                NetworkServer.Spawn(go);
+                                go.name = objectName;
+                            }
+                        }
+                        else
+                        {
+                            go = Instantiate(prefab, newPos, alignedRot, parent);
+
                             NetworkServer.Spawn(go);
                             go.name = objectName;
                         }
-                    }else{
-                        go = Instantiate(prefab, newPos, rotatedRotation, parent);
-                        
-                        NetworkServer.Spawn(go);
-                        go.name = objectName;
                     }
                     
                 }

@@ -25,6 +25,7 @@ public class LootableObject : NetworkBehaviour
     public BuildingInteriorLink interiorLink;
     public NetworkIdentity networkIdentity;
     public bool isLink = false;
+    
 
     void Start()
     {
@@ -41,7 +42,7 @@ public class LootableObject : NetworkBehaviour
 
             if (lootProgress >= lootTime)
             {
-                CompleteLooting( networkIdentity);
+                CompleteLooting();
             }
         }
         else if (lootProgress > 0)
@@ -53,9 +54,10 @@ public class LootableObject : NetworkBehaviour
     public void StartLooting(NetworkIdentity networkIdent)
     {
         if (isHolding) return; // Prevent multiple loots at once
-
-        isHolding = true;
         networkIdentity = networkIdent;
+        // targetNetId = networkIdent.netId;
+        //Debug.Log(networkIdentity);
+        isHolding = true;
 
         worldCanvas.gameObject.SetActive(true);
         loadingBarUI.fillAmount = 0f;
@@ -67,7 +69,7 @@ public class LootableObject : NetworkBehaviour
         ResetLooting();
     }
 
-    private void CompleteLooting(NetworkIdentity networkIdentity)
+    private void CompleteLooting()
     {
         isHolding = false;
         lootProgress = 0f;
@@ -87,16 +89,22 @@ public class LootableObject : NetworkBehaviour
     }
 
     [Command(requiresAuthority = false)]
-    private void CmdSpawnLoot(NetworkIdentity networkIdentity)
+    public void CmdSpawnLoot(NetworkIdentity networkIdentity)
     {
         if(isLink){
 
-            if(interiorLink != null){
+            if(interiorLink != null && networkIdentity != null && interiorLink.assignedInteriorScene != null){
+                if (InteriorSceneManager.Instance == null)
+                {
+                    Debug.LogError("InteriorSceneManager.Instance is null! Did you forget to add it to the scene?");
+                    return;
+                }
 
                 interiorLink.AssignInteriorIfNeeded();
                 InteriorSceneManager.Instance.MovePlayerToInterior(networkIdentity, interiorLink.assignedInteriorScene);
             } 
         } else {
+            Debug.Log("looting");
             int lootCount = Random.Range(2, 5);
             int attempts = 0;
 

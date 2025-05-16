@@ -29,10 +29,11 @@ public class PlayerInteractionScript : NetworkBehaviour
         if (Physics.Raycast(transform.position, transform.forward, out hit, interactionRange))
         {
             LootableObject lootable = hit.collider.GetComponent<LootableObject>();
-            if (lootable != null)
+            NetworkIdentity networkIdentity = gameObject.GetComponent<NetworkIdentity>();
+            if (lootable != null && networkIdentity != null)
             {
                 currentLootable = lootable;
-                lootable.StartLooting(netIdentity);
+                lootable.StartLooting(networkIdentity);
             }
         }
     }

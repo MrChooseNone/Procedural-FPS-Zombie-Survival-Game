@@ -218,8 +218,11 @@ public class ZombieAI : NetworkBehaviour, IDamageble
             isAttacking = (distanceToPlayer < distanceToAttack);
 
             // Path check & wall detection
-            NavMeshPath path = new NavMeshPath();
-            navAgent.CalculatePath(closestPlayer.transform.position, path);
+            if(navAgent.isActiveAndEnabled){
+                NavMeshPath path = new NavMeshPath();
+                navAgent.CalculatePath(closestPlayer.transform.position, path);
+
+            }
 
             if (!isAttackingWall)
             {
@@ -338,11 +341,14 @@ public class ZombieAI : NetworkBehaviour, IDamageble
     public void StopFollowingPlayer()
     {
         isFollowing = false;
-        Vector3 playerLastPos = closestPlayer.transform.position;
+        if(closestPlayer != null){
 
-        // Optionally, you can make the zombie wander randomly after losing track of the player
-        randomDestination = new Vector3(Random.Range(playerLastPos.x -5, playerLastPos.x +5), 0f, Random.Range(playerLastPos.z -5, playerLastPos.z +5));
-        navAgent.SetDestination(randomDestination);
+            Vector3 playerLastPos = closestPlayer.transform.position;
+            // Optionally, you can make the zombie wander randomly after losing track of the player
+            randomDestination = new Vector3(Random.Range(playerLastPos.x -5, playerLastPos.x +5), 0f, Random.Range(playerLastPos.z -5, playerLastPos.z +5));
+            navAgent.SetDestination(randomDestination);
+        }
+
     }
 [Server]
     public void Damage(float amount, NetworkIdentity networkIdentity = null)
@@ -440,7 +446,7 @@ public class ZombieAI : NetworkBehaviour, IDamageble
     void RpcSpawnBloodEffect(Vector3 position)
     {
         GameObject bloodEffectPrefabRef = Instantiate(bloodEffectPrefab, position, Quaternion.identity);
-        bloodEffectPrefabRef.transform.SetParent(headObject.transform);
+        //bloodEffectPrefabRef.transform.SetParent(headObject.transform);
     }
     //zombie Attacks----------------------------------------
     [Server]
