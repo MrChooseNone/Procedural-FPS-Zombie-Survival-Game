@@ -5,6 +5,7 @@ using Unity.Cinemachine;
 using InfimaGames.LowPolyShooterPack;
 using NUnit.Framework;
 using System.Collections.Generic;
+using UnityEngine.UI;
 
 
 
@@ -105,61 +106,87 @@ public class WeaponController : NetworkBehaviour
     public float attackRadius = 1.2f;
     public float attackDistance = 2.5f; // Adjust to match sword reach
     private SoundEmitter soundEmitter;
+
+    //------------durability-----------
+    public float maxDurability;
+    public float currDurability;
+    public float durabilityLoss;
+    public Image durabilityImage;
+    public WeaponPickupController weaponPickupController;
     
     
 
     private void Start()
     {
-        
-        
+
+
         netIdentity = GetComponent<NetworkIdentity>();
         rb = GetComponent<Rigidbody>();
         gunCollider = GetComponent<Collider>();
-        if(isMelee){
+        if (isMelee)
+        {
 
             currentAmmo = 1;
-        } else currentAmmo = 0;
-            
-            
+        }
+        else currentAmmo = 0;
+
+
         animator = GetComponent<Animator>();
         animator.enabled = false;
 
         smoke.Stop();
 
-        
-            
-        
+        currDurability = maxDurability;
+
+
     }
 
     void Update()
     {
         if (!isOwned) return; // Only local player can fire
+        if (currDurability <= 0)
+        {
+            if (weaponPickupController != null)
+            {
+                weaponPickupController.DropGun();
+                Destroy(gameObject);
+            }
+        }
 
         if (Input.GetMouseButton(0) && Time.time >= nextFireTime && currentAmmo > 0 && reloadTimeLeft <= 0)
         {
             // Determine shooting direction
-            if(playerCamera != null && identityPlayer != null){
-                if(!isMelee){
+            if (playerCamera != null && identityPlayer != null)
+            {
+                if (!isMelee)
+                {
 
                     Quaternion shootDirection = CalculateShootDirection();
                     CmdFire(muzzle.position, shootDirection, identityPlayer, isMelee);
                     smoke.Play();
                     currentAmmo--;
-                    
+
                     nextFireTime = Time.time + fireRate;
                     Invoke("StopSmoke", 2f);
-                } else { // for melee
+                }
+                else
+                { // for melee
                     Debug.Log("melee start");
                     CmdFire(muzzle.position, Quaternion.identity, identityPlayer, isMelee);
 
                     nextFireTime = Time.time + fireRate;
                 }
-            }else{
+            }
+            else
+            {
 
                 Debug.Log("identityplayer is  null" + identityPlayer);
             }
-        } else if(Input.GetMouseButton(0) && Time.time >= nextFireTime && currentAmmo <= 0 && reloadTimeLeft <= 0){
-            if(fireSource != null && EmptyClip != null){
+        }
+        else if (Input.GetMouseButton(0) && Time.time >= nextFireTime && currentAmmo <= 0 && reloadTimeLeft <= 0)
+        {
+            if (fireSource != null && EmptyClip != null)
+            {
                 fireSource.pitch = Random.Range(0.9f, 1.1f);
                 fireSource.PlayOneShot(EmptyClip);
                 nextFireTime = Time.time + fireRate;
@@ -177,6 +204,11 @@ public class WeaponController : NetworkBehaviour
         if (reloadTimeLeft > 0)
         {
             reloadTimeLeft -= Time.deltaTime;
+        }
+
+        if (durabilityImage != null)
+        {
+            durabilityImage.fillAmount = Mathf.Clamp01(currDurability / maxDurability);
         }
         
     }
@@ -225,14 +257,14 @@ public class WeaponController : NetworkBehaviour
         
         RpcSetGunState(false);
         RpcPickup(player);
-        WeaponPickupController playerPickup= player.GetComponent<WeaponPickupController>();
+        weaponPickupController= player.GetComponent<WeaponPickupController>();
         // if (playerPickup != null)
         // {
         //     transform.SetParent(playerPickup.weaponHolder);
         //     transform.localPosition = Vector3.zero;  // Adjust as needed
         //     transform.localRotation = Quaternion.identity;  // Adjust as needed
         // }
-        TargetAssignCamera(player.connectionToClient, playerPickup);
+        TargetAssignCamera(player.connectionToClient, weaponPickupController);
         TargetAssignIdentity(player.connectionToClient, player);
         identityPlayer = player;
         Debug.Log("identityPlayer is set" + identityPlayer);
@@ -415,7 +447,7 @@ public class WeaponController : NetworkBehaviour
     { 
         Debug.Log("melee call " + isMelee);
         if(!isMelee){
-
+            currDurability -= durabilityLoss;
             Debug.Log("shoot" + player);
             
             // Spawn bullet on the server
@@ -467,6 +499,7 @@ public class WeaponController : NetworkBehaviour
     [Command]
     private void PerformeHit(){
         // Get the player's camera for attack origin
+        
         Camera cameraPlayer = identityPlayer.GetComponentInChildren<Camera>();
         if (cameraPlayer == null)
         {
@@ -512,7 +545,7 @@ public class WeaponController : NetworkBehaviour
             if (damagable != null && enemyIdentity != null  && !hitEnemies.Contains(enemyIdentity) )
             {
                 //int comboDamage = damage * (comboStep + 1); // Increase damage per combo step
-
+                currDurability -= durabilityLoss;
                 if (enemy != null)
                 {
                     hitEnemies.Add(enemyIdentity); // Register this enemy as hit

@@ -66,6 +66,7 @@ public class CustomNetworkManager : NetworkManager
                     player.SetActive(true); // Enable player
                     LoadingScreenManager loading = player.GetComponent<LoadingScreenManager>();
                     if(loading != null){
+                        Debug.Log("Show Loading screen");
                         loading.ShowLoadingScreen();
                     }
                     

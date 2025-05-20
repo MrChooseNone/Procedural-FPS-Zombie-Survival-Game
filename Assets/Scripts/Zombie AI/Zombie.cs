@@ -221,7 +221,6 @@ public class ZombieAI : NetworkBehaviour, IDamageble
             if(navAgent.isActiveAndEnabled){
                 NavMeshPath path = new NavMeshPath();
                 navAgent.CalculatePath(closestPlayer.transform.position, path);
-
             }
 
             if (!isAttackingWall)

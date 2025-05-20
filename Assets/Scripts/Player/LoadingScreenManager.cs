@@ -1,21 +1,31 @@
-using System.Collections;
+
 using UnityEngine;
-using UnityEngine.UI;
+
 
 public class LoadingScreenManager : MonoBehaviour
 {
-    public Image LoadingScreen;
+    public GameObject LoadingScreen;
     public FirstPersonController firstPersonController;
     public bool isLoading = false;
+    void Update()
+    {
+        if (isLoading)
+        {
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
+        }
+        
+    }
 
-    public void ShowLoadingScreen(){
+    public void ShowLoadingScreen()
+    {
         isLoading = true;
-        LoadingScreen.enabled = true;
+        LoadingScreen.SetActive(true);
         firstPersonController.enabled = false;
     }
     public void HideLoadingScreen(){
         isLoading = false;
-        LoadingScreen.enabled = false;
+        LoadingScreen.SetActive(false);
         firstPersonController.enabled = true;
     }
 }

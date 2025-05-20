@@ -30,7 +30,7 @@ class MeshChunkCombiner : NetworkBehaviour
         CombineByTag("Tree", "TreeChunk");
         //CombineByTag("Lamp", "LampChunk");
         CombineByTag("City", "CityChunk");
-        yield return new WaitForSeconds(30f);
+        yield return new WaitForSeconds(20f);
         GrassManager localGrassManager = NetworkClient.localPlayer?.GetComponent<GrassManager>();
         
         if (localGrassManager != null)
@@ -38,8 +38,9 @@ class MeshChunkCombiner : NetworkBehaviour
             localGrassManager.spawnGrass();
         }
         
-        yield return new WaitForSeconds(20f);
+        yield return new WaitForSeconds(10f);
         LoadingScreenManager localPlayer = NetworkClient.localPlayer?.GetComponent<LoadingScreenManager>();
+        Debug.Log("hide loading screen");
         if (localPlayer != null)
         {
             localPlayer.HideLoadingScreen();
