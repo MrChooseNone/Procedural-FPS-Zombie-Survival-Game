@@ -6,6 +6,7 @@ public class LoadingScreenManager : MonoBehaviour
 {
     public GameObject LoadingScreen;
     public FirstPersonController firstPersonController;
+    public HealthSystem health;
     public bool isLoading = false;
     void Update()
     {
@@ -22,10 +23,13 @@ public class LoadingScreenManager : MonoBehaviour
         isLoading = true;
         LoadingScreen.SetActive(true);
         firstPersonController.enabled = false;
+        health.enabled = false;
     }
-    public void HideLoadingScreen(){
+    public void HideLoadingScreen()
+    {
         isLoading = false;
         LoadingScreen.SetActive(false);
         firstPersonController.enabled = true;
+        health.enabled = false;
     }
 }

@@ -312,8 +312,10 @@ public class HealthSystem : NetworkBehaviour, IDamageble
         
 
         Debug.Log($"{gameObject.name} has respawned.");
-
-        CmdDespawnPlayerRagdoll(currRagdoll);
+        if (currRagdoll)
+        {
+            CmdDespawnPlayerRagdoll(currRagdoll); 
+        }
         NetworkIdentity networkIdentity = gameObject.GetComponent<NetworkIdentity>();
         RpcEnableBody(networkIdentity);
 

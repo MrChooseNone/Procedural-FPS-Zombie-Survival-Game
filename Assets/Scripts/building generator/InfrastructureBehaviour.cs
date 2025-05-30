@@ -256,7 +256,10 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
                         }
                         else
                         {
-                            go = Instantiate(prefab, newPos, alignedRot, parent);
+                            Vector3 movedPos = newPos;
+                            float terrainHeight = terrain.SampleHeight(movedPos);
+                            movedPos.y = terrainHeight;
+                            go = Instantiate(prefab, movedPos, alignedRot, parent);
 
                             NetworkServer.Spawn(go);
                             go.name = objectName;

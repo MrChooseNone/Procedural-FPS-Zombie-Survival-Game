@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using MapMaker;
 
+
 /*
     Copyright (c) 2017 Sloan Kelly
 
@@ -38,6 +39,9 @@ class BuildingMaker : InfrastructureBehaviour
     private Vector3 v9;
     private Vector3 v10;
     public bool isFinished = false;
+    public GameObject[] frames;
+    public GameObject[] props;
+    public float thick_ness;
 
     IEnumerator Start()
     {
@@ -57,7 +61,7 @@ class BuildingMaker : InfrastructureBehaviour
         isFinished = true;
     }
 
-    
+
     protected override void OnObjectCreated(OsmWay way, Vector3 origin, List<Vector3> vectors, List<Vector3> normals, List<Vector2> uvs, List<int> indices)
     {
         // Get the centre of the roof
@@ -67,14 +71,15 @@ class BuildingMaker : InfrastructureBehaviour
         //vectors.Add(oTop);
         //normals.Add(Vector3.up);
         //uvs.Add(new Vector2(0.5f, 0.5f));
-        
+
 
         List<int> roofPointsRemoved = new List<int>();
-        
+
         float maxHeight = float.MinValue;
         Vector3 originOffset = origin - map.bounds.Centre;
 
-        for (int i = 0; i < way.NodeIDs.Count; i++){
+        for (int i = 0; i < way.NodeIDs.Count; i++)
+        {
             OsmNode temp2 = map.nodes[way.NodeIDs[i]];
             Vector3 tempS1 = temp2 - origin;
             Vector3 worldBottom = new Vector3(tempS1.x + originOffset.x, 0, tempS1.z + originOffset.z);
@@ -83,6 +88,7 @@ class BuildingMaker : InfrastructureBehaviour
             maxHeight = Mathf.Max(maxHeight, groundY); //track the highest point
         }
         float highestPoint = maxHeight + way.Height; // Add building height
+        GameObject randomFrame = frames[Random.Range(0, frames.Length)];
 
         for (int i = 0; i < way.NodeIDs.Count; i++)
         {
@@ -135,7 +141,7 @@ class BuildingMaker : InfrastructureBehaviour
             // }
 
             // highestPoint = maxHeight + way.Height; // Add building height
-
+            Vector3 lastBottom = Vector3.zero;
             for (int j = 0; j <= subdivisions; j++)
             {
                 float t = j / (float)subdivisions;
@@ -146,6 +152,7 @@ class BuildingMaker : InfrastructureBehaviour
 
                 Vector3 bottom = new Vector3(wallPoint.x, groundY, wallPoint.z);
                 Vector3 top = new Vector3(wallPoint.x, highestPoint, wallPoint.z);
+                SpawnSegment(bottom, top, randomFrame, thick_ness, origin);
 
                 vectors.Add(bottom);
                 vectors.Add(top);
@@ -170,88 +177,189 @@ class BuildingMaker : InfrastructureBehaviour
 
                     indices.Add(b1); indices.Add(b2); indices.Add(t1);
                     indices.Add(t1); indices.Add(b2); indices.Add(t2);
+                    GameObject randomProp = props[Random.Range(0, props.Length)];
+                    float rand = Random.Range(0f, 1f);
+                    if (rand > 0.9)
+                    {      
+                        SpawnProp(bottom, lastBottom, randomProp, 1, origin);
+                    }
+                }
+                lastBottom = bottom;
+            }
+            Vector3 x1 = new Vector3(s1.x, highestPoint, s1.z);
+            Vector3 x2 = new Vector3(s2.x, highestPoint, s2.z);
+            SpawnSegment(x1, x2, randomFrame, thick_ness, origin);
+        }
+        
+
+        Debug.Log(way.NodeIDs.Count);
+        if (way.NodeIDs.Count == 5)
+        {
+            Vector3 firstTopRoof = Vector3.zero;
+            Vector3 secondTopRoof = Vector3.zero;
+            float randomRoofHeight = Random.Range(1, 5);
+            for (int i = 0; i < way.NodeIDs.Count; i++)
+            {
+                OsmNode w1 = map.nodes[way.NodeIDs[i]];
+                OsmNode w2 = map.nodes[way.NodeIDs[(i + 1) % way.NodeIDs.Count]];
+
+                Vector3 s1 = w1 - origin;
+                Vector3 s2 = w2 - origin;
+                if (i == 0 || i == 2)   // for the 2 parallel sides
+                {
+                    float x = 0.5f;  // for the midpoint
+                    Vector3 pointOnWall = Vector3.Lerp(s1, s2, x);
+
+                    Vector3 topRoof = new Vector3(pointOnWall.x, highestPoint + randomRoofHeight, pointOnWall.z);
+                    Vector3 topRight = new Vector3(s1.x, highestPoint, s1.z);
+                    Vector3 topLeft = new Vector3(s2.x, highestPoint, s2.z);
+                    SpawnSegment(topRoof, topRight, randomFrame, thick_ness, origin);
+                    SpawnSegment(topRoof, topLeft, randomFrame, thick_ness, origin);
+                    if (i == 0)
+                    {
+                        firstTopRoof = topRoof;
+                    }
+                    else
+                    {
+                        secondTopRoof = topRoof;
+                    }
+
+                    vectors.Add(topRoof);
+                    vectors.Add(topRight);
+                    vectors.Add(topLeft);
+
+                    Vector3 wallNormalroof = Vector3.Cross(Vector3.up, s2 - s1).normalized;
+                    normals.Add(wallNormalroof);
+                    normals.Add(wallNormalroof);
+                    normals.Add(wallNormalroof);
+
+                    int idxr = vectors.Count;
+                    int roof1 = idxr - 3;
+                    int roof2 = idxr - 2;
+                    int roof3 = idxr - 1;
+                    indices.Add(roof1); indices.Add(roof2); indices.Add(roof3);
                 }
             }
-
-            
-            
-
-            // Prepare vertices for roof and top walls
-            Vector3 v1 = w1 - origin;
-            Vector3 v2 = w2 - origin;
-            float originalY1 = v1.y;
-            float originalY2 = v2.y;
-            v1.y = terrain.SampleHeight(new Vector3(v1.x + originOffset.x, 0, v1.z + originOffset.z));
-            v2.y = terrain.SampleHeight(new Vector3(v2.x + originOffset.x, 0, v2.z + originOffset.z));
-
-            Vector3 v3 = v1 + new Vector3(0, way.Height + originalY1, 0);
-            Vector3 v4 = v2 + new Vector3(0, way.Height + originalY2, 0);
-
-            Vector3 v8 = new Vector3(0, way.Height, 0);
-            Vector3 v9 = new Vector3(0, way.Height, 0);
-            Vector3 v10 = new Vector3(0, way.Height, 0);
-
-            if (r1 != null && r2 != null && r3 != null)
+            for (int i = 0; i < way.NodeIDs.Count; i++)
             {
-                Vector3 v5 = r1 - origin;
-                Vector3 v6 = r2 - origin;
-                Vector3 v7 = r3 - origin;
+                OsmNode w1 = map.nodes[way.NodeIDs[i]];
+                OsmNode w2 = map.nodes[way.NodeIDs[(i + 1) % way.NodeIDs.Count]];
 
-                v8 = v5 + new Vector3(0, way.Height, 0);
-                v9 = v6 + new Vector3(0, way.Height, 0);
-                v10 = v7 + new Vector3(0, way.Height, 0);
+                Vector3 s1 = w1 - origin;
+                Vector3 s2 = w2 - origin;
+                if (i == 1 || i == 3)   // for the 2 parallel sides
+                {
+                    
+                    Vector3 topRight = new Vector3(s1.x, highestPoint, s1.z);
+                    Vector3 topLeft = new Vector3(s2.x, highestPoint, s2.z);
+                    SpawnSegment(firstTopRoof, secondTopRoof, randomFrame, thick_ness, origin);
+
+                    vectors.Add(firstTopRoof);
+                    vectors.Add(secondTopRoof);
+                    vectors.Add(topRight);
+                    vectors.Add(topLeft);
+
+                    Vector3 wallNormalroof = Vector3.Cross(Vector3.up, s2 - s1).normalized;
+
+                    normals.Add(wallNormalroof);
+                    normals.Add(wallNormalroof);
+                    normals.Add(wallNormalroof);
+                    normals.Add(wallNormalroof);
+
+                    int idx = vectors.Count;
+                    int b1 = idx - 4;
+                    int t1 = idx - 3;
+                    int b2 = idx - 2;
+                    int t2 = idx - 1;
+                    if (i == 1)
+                    {
+                        indices.Add(b1); indices.Add(b2); indices.Add(t1);
+                        indices.Add(t1); indices.Add(b2); indices.Add(t2);
+                    }
+                    else
+                    {
+                        indices.Add(b1); indices.Add(t1); indices.Add(t2);
+                        indices.Add(t1); indices.Add(b2); indices.Add(t2);
+                    }
+                }
             }
+        }
+        
+        // Prepare vertices for roof and top walls
+            // Vector3 v1 = w1 - origin;
+            // Vector3 v2 = w2 - origin;
+            // float originalY1 = v1.y;
+            // float originalY2 = v2.y;
+            // v1.y = terrain.SampleHeight(new Vector3(v1.x + originOffset.x, 0, v1.z + originOffset.z));
+            // v2.y = terrain.SampleHeight(new Vector3(v2.x + originOffset.x, 0, v2.z + originOffset.z));
 
-            vectors.Add(v1);
-            vectors.Add(v2);
-            vectors.Add(v3);
-            vectors.Add(v4);
-            vectors.Add(v8);
-            vectors.Add(v9);
-            vectors.Add(v10);
+            // Vector3 v3 = v1 + new Vector3(0, way.Height + originalY1, 0);
+            // Vector3 v4 = v2 + new Vector3(0, way.Height + originalY2, 0);
 
-            float roofMeshWidth = Vector3.Distance(v1, v2);
-            float roofMeshHeight = Vector3.Distance(v1, v3);
+            // Vector3 v8 = new Vector3(0, way.Height, 0);
+            // Vector3 v9 = new Vector3(0, way.Height, 0);
+            // Vector3 v10 = new Vector3(0, way.Height, 0);
 
-            uvs.Add(new Vector2(0, 0));
-            uvs.Add(new Vector2(roofMeshWidth / scaleFactor, 0));
-            uvs.Add(new Vector2(0, roofMeshHeight / scaleFactor));
-            uvs.Add(new Vector2(roofMeshWidth / scaleFactor, roofMeshHeight / scaleFactor));
+            // if (r1 != null && r2 != null && r3 != null)
+            // {
+            //     Vector3 v5 = r1 - origin;
+            //     Vector3 v6 = r2 - origin;
+            //     Vector3 v7 = r3 - origin;
 
-            uvs.Add(new Vector2(0.5f, 0));
-            uvs.Add(new Vector2(0.5f, 1));
-            uvs.Add(new Vector2(0.25f, 0.5f));
+            //     v8 = v5 + new Vector3(0, way.Height, 0);
+            //     v9 = v6 + new Vector3(0, way.Height, 0);
+            //     v10 = v7 + new Vector3(0, way.Height, 0);
+            // }
 
-            normals.Add(-Vector3.forward);
-            normals.Add(-Vector3.forward);
-            normals.Add(-Vector3.forward);
-            normals.Add(-Vector3.forward);
-            normals.Add(Vector3.up);
-            normals.Add(Vector3.up);
-            normals.Add(Vector3.up);
+            // vectors.Add(v1);
+            // vectors.Add(v2);
+            // vectors.Add(v3);
+            // vectors.Add(v4);
+            // vectors.Add(v8);
+            // vectors.Add(v9);
+            // vectors.Add(v10);
 
-            int idx7 = vectors.Count - 1;
-            int idx6 = vectors.Count - 2;
-            int idx5 = vectors.Count - 3;
-            int idx4 = vectors.Count - 4;
-            int idx3 = vectors.Count - 5;
-            int idx2 = vectors.Count - 6;
-            int idx1 = vectors.Count - 7;
+            // float roofMeshWidth = Vector3.Distance(v1, v2);
+            // float roofMeshHeight = Vector3.Distance(v1, v3);
 
-    // Optionally add triangle indices for roof or other polygons here
+            // uvs.Add(new Vector2(0, 0));
+            // uvs.Add(new Vector2(roofMeshWidth / scaleFactor, 0));
+            // uvs.Add(new Vector2(0, roofMeshHeight / scaleFactor));
+            // uvs.Add(new Vector2(roofMeshWidth / scaleFactor, roofMeshHeight / scaleFactor));
+
+            // uvs.Add(new Vector2(0.5f, 0));
+            // uvs.Add(new Vector2(0.5f, 1));
+            // uvs.Add(new Vector2(0.25f, 0.5f));
+
+            // normals.Add(-Vector3.forward);
+            // normals.Add(-Vector3.forward);
+            // normals.Add(-Vector3.forward);
+            // normals.Add(-Vector3.forward);
+            // normals.Add(Vector3.up);
+            // normals.Add(Vector3.up);
+            // normals.Add(Vector3.up);
+
+            // int idx7 = vectors.Count - 1;
+            // int idx6 = vectors.Count - 2;
+            // int idx5 = vectors.Count - 3;
+            // int idx4 = vectors.Count - 4;
+            // int idx3 = vectors.Count - 5;
+            // int idx2 = vectors.Count - 6;
+            // int idx1 = vectors.Count - 7;
+
+            // Optionally add triangle indices for roof or other polygons here
 
 
 
             // And now the roof triangles
-        //     indices.Add(0);
-        //     indices.Add(idx3);
-        //     indices.Add(idx4);
-            
-        //     // Don't forget the upside down one!
-        //     indices.Add(idx4);
-        //     indices.Add(idx3);
-        //     indices.Add(0);
-        }
+            //     indices.Add(0);
+            //     indices.Add(idx3);
+            //     indices.Add(idx4);
+
+            //     // Don't forget the upside down one!
+            //     indices.Add(idx4);
+            //     indices.Add(idx3);
+            //     indices.Add(0);
         // Debug.Log("Roof points: " + roofPoints + roofPoints.Count);
         // for(int i = 0; i < roofPoints.Count; i++){
         //     int index1 = (i -1 + roofPoints.Count) % roofPoints.Count;
@@ -269,6 +377,46 @@ class BuildingMaker : InfrastructureBehaviour
         //     }
         // }
 
+    }
+     public void SpawnSegment(Vector3 s1, Vector3 s2, GameObject linePrefab, float thickness, Vector3 origin)
+    {
+ 
+        GameObject line = linePrefab != null
+            ? Instantiate(linePrefab)
+            : GameObject.CreatePrimitive(PrimitiveType.Cube);
+        line.tag = "Frames";
+
+        Vector3 dir = s2 - s1;
+        float length = dir.magnitude;
+        float x = 0.5f;  // for the midpoint
+        Vector3 pointOnWall = Vector3.Lerp(s1, s2, x);
+
+        line.transform.position = pointOnWall +(origin - map.bounds.Centre);
+
+        line.transform.rotation = Quaternion.LookRotation(dir.normalized);
+
+        line.transform.localScale = new Vector3(thickness, thickness, length);
+    }
+
+    public void SpawnProp(Vector3 s1, Vector3 s2, GameObject Prefab, float size, Vector3 origin)
+    {
+        // 1. create or clone your line object
+        GameObject line;
+        if (Prefab != null) {
+
+            line = Instantiate(Prefab);
+            line.tag = "Prop";
+            
+            float x = 0.5f;  // for the midpoint
+            Vector3 pointOnWall = Vector3.Lerp(s1, s2, x);
+            Vector3 dir = s2 - s1;
+
+            line.transform.position = pointOnWall +(origin - map.bounds.Centre);
+            line.transform.position += new Vector3(2,0,0);
+            line.transform.rotation = Quaternion.LookRotation(dir.normalized);
+
+            line.transform.localScale = new Vector3(size, size, size);
+        }
     }
 
     public bool IsEar(Vector3 p1, Vector3 p2, Vector3 p3, List<Vector3> polygon)

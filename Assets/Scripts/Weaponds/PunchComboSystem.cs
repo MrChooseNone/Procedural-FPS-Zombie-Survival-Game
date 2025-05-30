@@ -134,12 +134,13 @@ public class PunchComboSystem : NetworkBehaviour
     [Command(requiresAuthority = false)]
     void CmdChangeZombieAnimation(string newAni, NetworkIdentity identity) {
         if (NetworkServer.active) {
-            
+            if (identity != null)
+            {
                 ZombieAI enemy = identity.GetComponent<ZombieAI>();
                 if (enemy != null) {
                     enemy.ChangeAnimation(newAni);
-                }
-            
+                } 
+            } 
         }
     }   
 
