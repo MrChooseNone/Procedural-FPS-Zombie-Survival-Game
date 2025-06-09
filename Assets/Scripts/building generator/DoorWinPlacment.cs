@@ -51,6 +51,7 @@ public class DoorWinPlacment : NetworkBehaviour
             int[] triangles = mesh.triangles;
 
             Vector3 meshCenter = building.transform.TransformPoint(mesh.bounds.center);
+            float fixedY = meshCenter.y;
             HashSet<Vector3> placedPositions = new HashSet<Vector3>();
             HashSet<Vector3> buildingNodes = GetBuildingNodes(vertices, building); // Extract nodes
             float minTriangleEdgeLength = 1f;
@@ -94,9 +95,9 @@ public class DoorWinPlacment : NetworkBehaviour
                     }
                     else
                     {
-                        PlaceWindowsAlongEdge(v1, v2, normal, placedPositions, buildingNodes, building);
-                        PlaceWindowsAlongEdge(v2, v3, normal, placedPositions, buildingNodes, building);
-                        PlaceWindowsAlongEdge(v3, v1, normal, placedPositions, buildingNodes, building);
+                        PlaceWindowsAlongEdge(v1, v2, normal, placedPositions, buildingNodes, building, fixedY);
+                        PlaceWindowsAlongEdge(v2, v3, normal, placedPositions, buildingNodes, building, fixedY);
+                        PlaceWindowsAlongEdge(v3, v1, normal, placedPositions, buildingNodes, building, fixedY);
                     }
                 }
             }
@@ -113,19 +114,20 @@ public class DoorWinPlacment : NetworkBehaviour
         return nodes;
     }
 
-    void PlaceWindowsAlongEdge(Vector3 start, Vector3 end, Vector3 normal, HashSet<Vector3> placedPositions, HashSet<Vector3> buildingNodes, GameObject building)
+    void PlaceWindowsAlongEdge(Vector3 start, Vector3 end, Vector3 normal, HashSet<Vector3> placedPositions, HashSet<Vector3> buildingNodes, GameObject building, float fixedY)
     {
         float wallWidth = Vector3.Distance(start, end);
         int numWindows = Mathf.FloorToInt(wallWidth / windowSpacing);
         float buildHeight = GetBuildingHeight(building);
         int numLevels = (int)Mathf.Ceil(buildHeight/verticalSpacing);
-
+        
         for (int j = 0; j < numWindows; j++)
         {
             Vector3 windowPosition = Vector3.Lerp(start, end, (j + 0.5f) / numWindows);
-            windowPosition.y = windowHeight + terrain.SampleHeight(windowPosition);
+            
+            windowPosition.y = fixedY;
 
-            if (!IsPositionNearExisting(placedPositions, windowPosition) && !IsNearBuildingNode(buildingNodes, windowPosition))
+            if (!IsPositionNearExisting(placedPositions, windowPosition) && !IsNearBuildingNodeXZ(buildingNodes, windowPosition, nodeAvoidanceThreshold))
             {
                 Vector3 levelPosition = windowPosition;
                 //adjust to terrain
@@ -142,15 +144,21 @@ public class DoorWinPlacment : NetworkBehaviour
         }
     }
 
-    bool IsNearBuildingNode(HashSet<Vector3> buildingNodes, Vector3 position)
+    bool IsNearBuildingNodeXZ(HashSet<Vector3> buildingNodes, Vector3 position, float horizontalThreshold)
     {
+        float px = position.x;
+        float pz = position.z;
+
         foreach (var node in buildingNodes)
         {
-            if (Vector3.Distance(node, position) < nodeAvoidanceThreshold)
+            float dx = node.x - px;
+            float dz = node.z - pz;
+            if (dx * dx + dz * dz < horizontalThreshold * horizontalThreshold)
                 return true;
         }
         return false;
     }
+
 
     bool IsPositionNearExisting(HashSet<Vector3> placedPositions, Vector3 position, float threshold = 1f)
     {

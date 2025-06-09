@@ -170,6 +170,20 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
     private void SpawnPrefabs(OsmWay way, Vector3 localOrigin, GameObject prefab, string objectName, bool isRoad = false, GameObject[] prefabArray = null, GameObject[] carArray= null){
         GameObject go;
         
+                float spacing = 5;
+                float offsetProp = 0;
+                float tiltProp = 0;
+            if (isRoad)
+            {
+                spacing = Random.Range(5, 30);
+                offsetProp = Random.Range(5f, 7f);
+                tiltProp = Random.Range(0f, 6f);
+            }
+            else
+            {
+
+                spacing = 2.5f; // adjust
+            }
             for (int i = 1; i < way.NodeIDs.Count; i++)
             {
                 Transform parent = new GameObject($"placed {way.ID}").transform;
@@ -184,13 +198,6 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
                 float distance = Vector3.Distance(start, end);
 
                 // Define the spacing between each prefab instance along the segment
-                float spacing = 5;
-                if(isRoad){
-                    spacing = Random.Range(15, 30);
-                }else{
-
-                    spacing = 2.5f; // You can adjust this value as needed
-                }
 
                 int numPrefabs = Mathf.FloorToInt(distance / spacing);
 
@@ -237,9 +244,13 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
                                     go.name = objectName;
                                 }
                             }
+                            float tiltX = Random.Range(-tiltProp, +tiltProp);
+                            float tiltZ = Random.Range(-tiltProp, +tiltProp);
+                            Quaternion tiltRotation = Quaternion.Euler(tiltX, 0f, tiltZ);
+                            Quaternion finalRotation = alignedRot * tiltRotation;
 
                             int random = Random.Range(0, prefabArray.Length);
-                            Vector3 offset = Vector3.Cross(diff, Vector3.up).normalized * 5f; // Offset 5 units to the side
+                            Vector3 offset = Vector3.Cross(diff, Vector3.up).normalized * offsetProp; // Offset 5 units to the side
 
                             Vector3 movedPos = newPos + offset;
                             float terrainHeight = terrain.SampleHeight(movedPos);
@@ -248,7 +259,7 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
                             if (IsValidTreePosition(movedPos))
                             {
 
-                                go = Instantiate(prefabArray[random], movedPos, alignedRot, parent);
+                                go = Instantiate(prefabArray[random], movedPos, finalRotation, parent);
 
                                 NetworkServer.Spawn(go);
                                 go.name = objectName;
@@ -259,7 +270,9 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
                             Vector3 movedPos = newPos;
                             float terrainHeight = terrain.SampleHeight(movedPos);
                             movedPos.y = terrainHeight;
-                            go = Instantiate(prefab, movedPos, alignedRot, parent);
+                            Quaternion offsetRot = Quaternion.Euler(0, 90, 0);
+                            Quaternion finalRot = alignedRot * offsetRot;
+                            go = Instantiate(prefab, movedPos, finalRot, parent);
 
                             NetworkServer.Spawn(go);
                             go.name = objectName;

@@ -90,6 +90,18 @@ class BuildingMaker : InfrastructureBehaviour
         float highestPoint = maxHeight + way.Height; // Add building height
         GameObject randomFrame = frames[Random.Range(0, frames.Length)];
 
+        //clockwise or counter clockwise
+         List<Vector3> footprint = new List<Vector3>();
+        foreach (var nodeID in way.NodeIDs)
+        {
+            OsmNode osmNode = map.nodes[nodeID];
+            Vector3 local = osmNode - origin; 
+            Vector3 world2D = new Vector3(local.x, 0f, local.z) + (origin - map.bounds.Centre);
+            footprint.Add(world2D);  // y=0 here, we only care about XZ
+        }
+        bool isCCW = (SignedPolygonAreaXZ(footprint) > 0f);
+
+
         for (int i = 0; i < way.NodeIDs.Count; i++)
         {
             // Find roof points (r1, r2, r3)
@@ -163,7 +175,11 @@ class BuildingMaker : InfrastructureBehaviour
                 uvs.Add(new Vector2(t * meshWidth / scaleFactor, 0));
                 uvs.Add(new Vector2(t * meshWidth / scaleFactor, meshHeight / scaleFactor));
 
-                Vector3 wallNormal = Vector3.Cross(Vector3.up, s2 - s1).normalized;
+                //Vector3 wallNormal = Vector3.Cross(Vector3.up, s2 - s1).normalized;
+                Vector3 edgeDir = (s2 - s1).normalized;
+                Vector3 wallNormal = isCCW
+                    ? Vector3.Cross(Vector3.up, edgeDir).normalized
+                    : Vector3.Cross(edgeDir, Vector3.up).normalized;
                 normals.Add(wallNormal);
                 normals.Add(wallNormal);
 
@@ -175,12 +191,24 @@ class BuildingMaker : InfrastructureBehaviour
                     int b2 = idx - 2;
                     int t2 = idx - 1;
 
-                    indices.Add(b1); indices.Add(b2); indices.Add(t1);
-                    indices.Add(t1); indices.Add(b2); indices.Add(t2);
+                    if (!isCCW)
+                    {
+                        // Keep same order as before if CCW:
+                        indices.Add(b1); indices.Add(b2); indices.Add(t1);
+                        indices.Add(t1); indices.Add(b2); indices.Add(t2);
+                    }
+                    else
+                    {
+                        // Reverse winding if CW:
+                        indices.Add(b1); indices.Add(t1); indices.Add(b2);
+                        indices.Add(t1); indices.Add(t2); indices.Add(b2);
+                    }
+                    // indices.Add(b1); indices.Add(b2); indices.Add(t1);
+                    // indices.Add(t1); indices.Add(b2); indices.Add(t2);
                     GameObject randomProp = props[Random.Range(0, props.Length)];
                     float rand = Random.Range(0f, 1f);
                     if (rand > 0.9)
-                    {      
+                    {
                         SpawnProp(bottom, lastBottom, randomProp, 1, origin);
                     }
                 }
@@ -378,20 +406,37 @@ class BuildingMaker : InfrastructureBehaviour
         // }
 
     }
+    
+    float SignedPolygonAreaXZ(List<Vector3> points)
+    {
+        // points.Count must be ≥ 3. We assume points are in order,
+        // and the polygon is closed (i.e. the edge from last→first is implied).
+        float sum = 0f;
+        for (int i = 0; i < points.Count; i++)
+        {
+            Vector3 a = points[i];
+            Vector3 b = points[(i + 1) % points.Count];
+            // Only use X,Z for 2D area:
+            sum += (a.x * b.z) - (b.x * a.z);
+        }
+        // Actually this is 2×(signed area); positive if CCW, negative if CW.
+        return sum * 0.5f;
+    }
+
      public void SpawnSegment(Vector3 s1, Vector3 s2, GameObject linePrefab, float thickness, Vector3 origin)
     {
- 
+
         GameObject line = linePrefab != null
             ? Instantiate(linePrefab)
             : GameObject.CreatePrimitive(PrimitiveType.Cube);
-        line.tag = "Frames";
+        line.tag = "CullTarget";
 
         Vector3 dir = s2 - s1;
         float length = dir.magnitude;
         float x = 0.5f;  // for the midpoint
         Vector3 pointOnWall = Vector3.Lerp(s1, s2, x);
 
-        line.transform.position = pointOnWall +(origin - map.bounds.Centre);
+        line.transform.position = pointOnWall + (origin - map.bounds.Centre);
 
         line.transform.rotation = Quaternion.LookRotation(dir.normalized);
 
@@ -405,7 +450,7 @@ class BuildingMaker : InfrastructureBehaviour
         if (Prefab != null) {
 
             line = Instantiate(Prefab);
-            line.tag = "Prop";
+            line.tag = "CullTarget";
             
             float x = 0.5f;  // for the midpoint
             Vector3 pointOnWall = Vector3.Lerp(s1, s2, x);
