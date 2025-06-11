@@ -37,7 +37,7 @@ class GrassManager : NetworkBehaviour
             grassRenderer.playerTransform = playerObject.transform;
         }
         grassRenderer.terrain = Terrain.activeTerrain.terrainData;
-        //grassRenderer.BuildGrass();
+        grassRenderer.BuildGrass();
             
         isFinished = true;
     }

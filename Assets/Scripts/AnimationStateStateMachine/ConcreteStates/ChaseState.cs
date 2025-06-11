@@ -47,7 +47,7 @@ public class ChaseState : EnemyState
     }
     public void AlertNearbyZombies()
     {
-        Collider[] zombies = Physics.OverlapSphere(enemy.transform.position, 100f);
+        Collider[] zombies = Physics.OverlapSphere(enemy.transform.position, 10f);
         foreach (Collider col in zombies)
         {
             ZombieAI otherZombie = col.GetComponentInParent<ZombieAI>();

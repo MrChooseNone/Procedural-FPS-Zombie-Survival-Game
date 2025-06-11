@@ -74,7 +74,7 @@ public class RandomPrefabSpawner : NetworkBehaviour
 
 
                 GameObject spawned = Instantiate(prefab, spawnPoint, randomYaw);
-                spawned.tag = "Prop";
+                spawned.tag = "CullTarget";
                 NetworkServer.Spawn(spawned);
 
                 // Optionally, you can give each debris item a tiny random tilt:

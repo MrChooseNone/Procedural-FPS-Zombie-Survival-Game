@@ -22,7 +22,7 @@ class MeshChunkCombiner : NetworkBehaviour
         {
             yield return new WaitForSeconds(1f);
         }
-        yield return new WaitForSeconds(20f);
+        
         CombineByTag("Building", "BuildingChunk");
         CombineByTag("Road", "RoadChunk");
         //CombineByTag("Bush", "BushChunk");
@@ -32,7 +32,7 @@ class MeshChunkCombiner : NetworkBehaviour
        // CombineByTag("City", "CityChunk");
         //CombineByTag("Frames", "FramesChunk");
         //CombineByTag("Prop", "PropChunk");
-        yield return new WaitForSeconds(20f);
+        
         GrassManager localGrassManager = NetworkClient.localPlayer?.GetComponent<GrassManager>();
         
         if (localGrassManager != null)

@@ -181,6 +181,7 @@ public class FirstPersonController : NetworkBehaviour
     public PunchComboSystem punchSystem;
     public AudioSource walkSource;
     public AudioSource sprintSource;
+    public SoundEmitter soundEmitter;
 
     
 
@@ -223,8 +224,10 @@ public class FirstPersonController : NetworkBehaviour
         if(mesh != null){
             mesh.enabled = false;
         }
+
+
         
-        
+        soundEmitter = gameObject.GetComponent<SoundEmitter>();
 
         rb = GetComponent<Rigidbody>();
 
@@ -287,15 +290,15 @@ public class FirstPersonController : NetworkBehaviour
         weaponController = GetComponent<WeaponPickupController>();
     }
 
-    
+
 
     private void Update()
     {
         #region Camera
-        if(!isLocalPlayer){return;}
+        if (!isLocalPlayer) { return; }
         Debug.Log("update is local");
         // Control camera movement
-        if(cameraCanMove)
+        if (cameraCanMove)
         {
             Mouse mouse = Mouse.current;
             yaw = transform.localEulerAngles.y + mouse.delta.x.ReadValue() * mouseSensitivity;
@@ -323,7 +326,7 @@ public class FirstPersonController : NetworkBehaviour
         {
             // Changes isZoomed when key is pressed
             // Behavior for toogle zoom
-            if(Input.GetKeyDown(zoomKey) && !holdToZoom && !isSprinting)
+            if (Input.GetKeyDown(zoomKey) && !holdToZoom && !isSprinting)
             {
                 if (!isZoomed)
                 {
@@ -337,24 +340,24 @@ public class FirstPersonController : NetworkBehaviour
 
             // Changes isZoomed when key is pressed
             // Behavior for hold to zoom
-            if(holdToZoom && !isSprinting)
+            if (holdToZoom && !isSprinting)
             {
-                if(Input.GetKeyDown(zoomKey))
+                if (Input.GetKeyDown(zoomKey))
                 {
                     isZoomed = true;
                 }
-                else if(Input.GetKeyUp(zoomKey))
+                else if (Input.GetKeyUp(zoomKey))
                 {
                     isZoomed = false;
                 }
             }
 
             // Lerps camera.fieldOfView to allow for a smooth transistion
-            if(isZoomed)
+            if (isZoomed)
             {
                 playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, zoomFOV, zoomStepTime * Time.deltaTime);
             }
-            else if(!isZoomed && !isSprinting)
+            else if (!isZoomed && !isSprinting)
             {
                 playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, fov, zoomStepTime * Time.deltaTime);
             }
@@ -365,16 +368,16 @@ public class FirstPersonController : NetworkBehaviour
 
         #region Sprint
 
-        if(enableSprint)
+        if (enableSprint)
         {
-            if(isSprinting)
+            if (isSprinting)
             {
                 isZoomed = false;
-                
+
                 playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, sprintFOV, sprintFOVStepTime * Time.deltaTime);
 
                 // Drain sprint remaining while sprinting
-                if(!unlimitedSprint)
+                if (!unlimitedSprint)
                 {
                     sprintRemaining -= 1 * Time.deltaTime;
                     if (sprintRemaining <= 0)
@@ -383,6 +386,7 @@ public class FirstPersonController : NetworkBehaviour
                         isSprintCooldown = true;
                     }
                 }
+                soundEmitter.EmittSound(15);
             }
             else
             {
@@ -392,7 +396,7 @@ public class FirstPersonController : NetworkBehaviour
 
             // Handles sprint cooldown 
             // When sprint remaining == 0 stops sprint ability until hitting cooldown
-            if(isSprintCooldown)
+            if (isSprintCooldown)
             {
                 sprintCooldown -= 1 * Time.deltaTime;
                 if (sprintCooldown <= 0)
@@ -406,10 +410,10 @@ public class FirstPersonController : NetworkBehaviour
             }
 
             // Handles sprintBar 
-            if(useSprintBar && !unlimitedSprint)
+            if (useSprintBar && !unlimitedSprint)
             {
                 float sprintRemainingPercent = sprintRemaining / sprintDuration;
-                sprintBar.fillAmount= sprintRemainingPercent;
+                sprintBar.fillAmount = sprintRemainingPercent;
             }
         }
 
@@ -418,9 +422,21 @@ public class FirstPersonController : NetworkBehaviour
         #region Jump
 
         // Gets input and calls jump method
-        if(enableJump && Input.GetKeyDown(jumpKey) && isGrounded)
+        if (enableJump && Input.GetKeyDown(jumpKey) && isGrounded)
         {
             Jump();
+        }
+        if (isGrounded)
+        {
+            isJumping = false;
+        }
+        if (isJumping)
+        {
+            playerCanMove = false;
+        }
+        else
+        {
+            playerCanMove = true;
         }
 
         #endregion
@@ -429,17 +445,17 @@ public class FirstPersonController : NetworkBehaviour
 
         if (enableCrouch)
         {
-            if(Input.GetKeyDown(crouchKey) && !holdToCrouch)
+            if (Input.GetKeyDown(crouchKey) && !holdToCrouch)
             {
                 Crouch();
             }
-            
-            if(Input.GetKeyDown(crouchKey) && holdToCrouch)
+
+            if (Input.GetKeyDown(crouchKey) && holdToCrouch)
             {
                 isCrouched = false;
                 Crouch();
             }
-            else if(Input.GetKeyUp(crouchKey) && holdToCrouch)
+            else if (Input.GetKeyUp(crouchKey) && holdToCrouch)
             {
                 isCrouched = true;
                 Crouch();
@@ -450,7 +466,7 @@ public class FirstPersonController : NetworkBehaviour
 
         CheckGround();
 
-        if(enableHeadBob)
+        if (enableHeadBob)
         {
             HeadBob();
         }
@@ -458,11 +474,14 @@ public class FirstPersonController : NetworkBehaviour
         // if(Input.GetKey(KeyCode.X)){
         //     Inspect();
         // }
-        
 
-        if(!isSprinting && !isWalking){
+
+        if (!isSprinting && !isWalking)
+        {
             isIdle = true;
-        }else{
+        }
+        else
+        {
             isIdle = false;
         }
 
@@ -471,7 +490,7 @@ public class FirstPersonController : NetworkBehaviour
         if (Input.GetKeyDown(KeyCode.F) && canPush) // Change key as needed
         {
             TryPush();
-            
+
         }
         #endregion
         if (isGrounded)
@@ -504,6 +523,11 @@ public class FirstPersonController : NetworkBehaviour
             // not grounded, stop both
             if (walkSource.isPlaying) walkSource.Stop();
             if (sprintSource.isPlaying) sprintSource.Stop();
+        }
+
+        if (isWalking)
+        {
+            soundEmitter.EmittSound(8);
         }
 
     }
@@ -738,7 +762,7 @@ public class FirstPersonController : NetworkBehaviour
             isGrounded = false;
             isJumping = true;
         }
-
+        soundEmitter.EmittSound(20);
         // When crouched and using toggle system, will uncrouch for a jump
         if(isCrouched && !holdToCrouch)
         {

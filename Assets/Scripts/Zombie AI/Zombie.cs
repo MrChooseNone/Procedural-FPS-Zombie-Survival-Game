@@ -65,6 +65,7 @@ public class ZombieAI : NetworkBehaviour, IDamageble
     //knockback
     private bool isKnockedBack;
     public float knockbackDuration = 0.3f; // How long knockback lasts
+    public float knockbackStun = 0.2f;
     public float knockbackDistance = 1.5f; // How far knockback moves
     public float knockbackSpeed = 5f; // How fast knockback moves
     //spawn
@@ -374,6 +375,11 @@ public class ZombieAI : NetworkBehaviour, IDamageble
         while (elapsedTime < knockbackDuration)
         {
             transform.position = Vector3.Lerp(startPos, endPos, elapsedTime / knockbackDuration);
+            elapsedTime += Time.deltaTime * knockbackSpeed;
+            yield return null;
+        }
+        while (knockbackDuration < elapsedTime && elapsedTime < knockbackDuration + knockbackStun)
+        {
             elapsedTime += Time.deltaTime * knockbackSpeed;
             yield return null;
         }

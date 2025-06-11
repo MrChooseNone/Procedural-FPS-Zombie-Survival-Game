@@ -59,6 +59,7 @@ namespace MapMaker
         public bool IsHandrail { get; private set; }
         public bool IsDitch { get; private set; }
         public bool IsTree { get; private set; }
+        public bool IsBussStop { get; private set; }
         public OsmWay(XmlNode node)
         {
             NodeIDs = new List<ulong>();
@@ -72,7 +73,7 @@ namespace MapMaker
 
             // Get the nodes
             XmlNodeList nds = node.SelectNodes("nd");
-            foreach(XmlNode n in nds)
+            foreach (XmlNode n in nds)
             {
                 ulong refNo = GetAttribute<ulong>("ref", n.Attributes);
                 NodeIDs.Add(refNo);
@@ -104,11 +105,11 @@ namespace MapMaker
                 {
                     IsRoad = true;
                 }
-                else if (key=="lanes")
+                else if (key == "lanes")
                 {
                     Lanes = GetAttribute<int>("v", t.Attributes);
                 }
-                else if (key=="name")
+                else if (key == "name")
                 {
                     Name = GetAttribute<string>("v", t.Attributes);
                 }
@@ -148,7 +149,11 @@ namespace MapMaker
                 {
                     IsTree = true; // Mark the way as a fence
                 }
-            
+                else if (key == "amenity" && GetAttribute<string>("v", t.Attributes) == "bus_stop")
+                {
+                    IsBussStop = true; // Mark the way as a fence
+                }
+
             }
         }
     }

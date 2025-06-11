@@ -6,6 +6,7 @@ using Mirror;
 
 
 
+
 /*
     Copyright (c) 2017 Sloan Kelly
 
@@ -28,6 +29,7 @@ using Mirror;
     SOFTWARE.
     ----------------------------------------
     Modified 2025 by Alexander Ohlsson
+    Where the new function are SpawnMesh, SpawnPrefab, IsvalidTreePosition, AdjustBuildingHeight
 */
 
 
@@ -76,7 +78,7 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
 
   
     [Server]
-    protected void CreateObject(OsmWay way, Material mat, string objectName, GameObject prefab = null, GameObject[] prefabArray= null, GameObject[] carArray= null)
+    protected void CreateObject(OsmWay way, Material mat, string objectName, GameObject prefab = null, GameObject[] prefabArray= null, GameObject[] carArray= null, bool single = false)
     {
         // Make sure we have some name to display
         objectName = string.IsNullOrEmpty(objectName) ? "OsmWay" : objectName;
@@ -95,7 +97,7 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
                 
             }else{
 
-                SpawnPrefabs(way, localOrigin, prefab, objectName);
+                SpawnPrefabs(way, localOrigin, prefab, objectName, false, null, null, single);
             }
         }
         else{
@@ -167,7 +169,7 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
             NetworkServer.Spawn(go);
     }
 
-    private void SpawnPrefabs(OsmWay way, Vector3 localOrigin, GameObject prefab, string objectName, bool isRoad = false, GameObject[] prefabArray = null, GameObject[] carArray= null){
+    private void SpawnPrefabs(OsmWay way, Vector3 localOrigin, GameObject prefab, string objectName, bool isRoad = false, GameObject[] prefabArray = null, GameObject[] carArray= null, bool single = false){
         GameObject go;
         
                 float spacing = 5;
@@ -184,103 +186,133 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
 
                 spacing = 2.5f; // adjust
             }
-            for (int i = 1; i < way.NodeIDs.Count; i++)
+            if (single)
             {
-                Transform parent = new GameObject($"placed {way.ID}").transform;
-                
-                OsmNode p1 = map.nodes[way.NodeIDs[i - 1]];
-                OsmNode p2 = map.nodes[way.NodeIDs[i]];
-
-                Vector3 start = p1 - localOrigin;
-                Vector3 end = p2 - localOrigin;
-
-                Vector3 diff = (end - start).normalized;
-                float distance = Vector3.Distance(start, end);
-
-                // Define the spacing between each prefab instance along the segment
-
-                int numPrefabs = Mathf.FloorToInt(distance / spacing);
-
-                for (int j = 0; j < numPrefabs; j++)
+                OsmNode p1 = map.nodes[way.NodeIDs[0]];
+                Vector3 position = p1 - localOrigin;
+                Vector3 newPos = position + (localOrigin - map.bounds.Centre);
+                Vector3 raypos = newPos;
+                float terrainHeightray = terrain.SampleHeight(raypos);
+                raypos.y = terrainHeightray;
+                Vector3 rayOrigin = raypos + Vector3.up * 10f;
+                if (Physics.Raycast(rayOrigin, Vector3.down, out var hit, 20f))
                 {
-                    // Calculate the position along the line for each prefab
-                    Vector3 position = Vector3.Lerp(start, end, (float)j / numPrefabs);
+                    Vector3 terrainPoint = hit.point;
+                    Vector3 terrainNormal = hit.normal;
 
-                    // Calculate direction (rotation) by looking from start to end point
-                    //Quaternion rotation = Quaternion.LookRotation(diff);
-                    //Quaternion rotatedRotation = rotation * Quaternion.Euler(0, 90, 0); // Rotate by 90 degrees around Y-axis
 
-                    // Instantiate the prefab at the correct position and rotation
+
+                    Vector3 movedPos = newPos;
+                    float terrainHeight = terrain.SampleHeight(movedPos);
+                    movedPos.y = terrainHeight;
+
+                    go = Instantiate(prefab, movedPos, Quaternion.identity);
+
+                    NetworkServer.Spawn(go);
+                    go.name = objectName;
+                }
+            }
+            else
+            {
+                
+                for (int i = 1; i < way.NodeIDs.Count; i++)
+                {
+                    Transform parent = new GameObject($"placed {way.ID}").transform;
                     
-                    Vector3 newPos = position + (localOrigin - map.bounds.Centre);
-                    Vector3 raypos = newPos;
-                    float terrainHeightray = terrain.SampleHeight(raypos);
-                    raypos.y = terrainHeightray;
-                    Vector3 rayOrigin = raypos + Vector3.up * 10f;
-                    if (Physics.Raycast(rayOrigin, Vector3.down, out var hit, 20f))
+                    OsmNode p1 = map.nodes[way.NodeIDs[i - 1]];
+                    OsmNode p2 = map.nodes[way.NodeIDs[i]];
+
+                    Vector3 start = p1 - localOrigin;
+                    Vector3 end = p2 - localOrigin;
+
+                    Vector3 diff = (end - start).normalized;
+                    float distance = Vector3.Distance(start, end);
+
+                    // Define the spacing between each prefab instance along the segment
+
+                    int numPrefabs = Mathf.FloorToInt(distance / spacing);
+
+                    for (int j = 0; j < numPrefabs; j++)
                     {
-                        Vector3 terrainPoint = hit.point;
-                        Vector3 terrainNormal = hit.normal;
+                        // Calculate the position along the line for each prefab
+                        Vector3 position = Vector3.Lerp(start, end, (float)j / numPrefabs);
 
-                        // build a rotation that respects forward & slope
-                        Quaternion alignedRot = Quaternion.LookRotation(diff, terrainNormal);
+                        // Calculate direction (rotation) by looking from start to end point
+                        //Quaternion rotation = Quaternion.LookRotation(diff);
+                        //Quaternion rotatedRotation = rotation * Quaternion.Euler(0, 90, 0); // Rotate by 90 degrees around Y-axis
 
-
-                        if (isRoad)
+                        // Instantiate the prefab at the correct position and rotation
+                        
+                        Vector3 newPos = position + (localOrigin - map.bounds.Centre);
+                        Vector3 raypos = newPos;
+                        float terrainHeightray = terrain.SampleHeight(raypos);
+                        raypos.y = terrainHeightray;
+                        Vector3 rayOrigin = raypos + Vector3.up * 10f;
+                        if (Physics.Raycast(rayOrigin, Vector3.down, out var hit, 20f))
                         {
-                            if (Random.Range(0f, 1f) <= 0.2f)
-                            {
-                                int randomCar = Random.Range(0, carArray.Length);
+                            Vector3 terrainPoint = hit.point;
+                            Vector3 terrainNormal = hit.normal;
 
-                                Vector3 carPos = newPos;
-                                float terrainHeightCar = terrain.SampleHeight(carPos);
-                                carPos.y = terrainHeightCar;
-                                if (IsValidTreePosition(carPos))
+                            // build a rotation that respects forward & slope
+                            Quaternion alignedRot = Quaternion.LookRotation(diff, terrainNormal);
+
+
+                            if (isRoad)
+                            {
+                                if (Random.Range(0f, 1f) <= 0.2f)
+                                {
+                                    int randomCar = Random.Range(0, carArray.Length);
+
+                                    Vector3 carPos = newPos;
+                                    float terrainHeightCar = terrain.SampleHeight(carPos);
+                                    carPos.y = terrainHeightCar;
+                                    if (IsValidTreePosition(carPos))
+                                    {
+
+                                        go = Instantiate(carArray[randomCar], carPos, alignedRot, parent);
+
+                                        NetworkServer.Spawn(go);
+                                        go.name = objectName;
+                                    }
+                                }
+                                float tiltX = Random.Range(-tiltProp, +tiltProp);
+                                float tiltZ = Random.Range(-tiltProp, +tiltProp);
+                                Quaternion tiltRotation = Quaternion.Euler(tiltX, 0f, tiltZ);
+                                Quaternion finalRotation = alignedRot * tiltRotation;
+
+                                int random = Random.Range(0, prefabArray.Length);
+                                Vector3 offset = Vector3.Cross(diff, Vector3.up).normalized * offsetProp; // Offset 5 units to the side
+
+                                Vector3 movedPos = newPos + offset;
+                                float terrainHeight = terrain.SampleHeight(movedPos);
+                                movedPos.y = terrainHeight;
+
+                                if (IsValidTreePosition(movedPos))
                                 {
 
-                                    go = Instantiate(carArray[randomCar], carPos, alignedRot, parent);
+                                    go = Instantiate(prefabArray[random], movedPos, finalRotation, parent);
 
                                     NetworkServer.Spawn(go);
                                     go.name = objectName;
                                 }
                             }
-                            float tiltX = Random.Range(-tiltProp, +tiltProp);
-                            float tiltZ = Random.Range(-tiltProp, +tiltProp);
-                            Quaternion tiltRotation = Quaternion.Euler(tiltX, 0f, tiltZ);
-                            Quaternion finalRotation = alignedRot * tiltRotation;
-
-                            int random = Random.Range(0, prefabArray.Length);
-                            Vector3 offset = Vector3.Cross(diff, Vector3.up).normalized * offsetProp; // Offset 5 units to the side
-
-                            Vector3 movedPos = newPos + offset;
-                            float terrainHeight = terrain.SampleHeight(movedPos);
-                            movedPos.y = terrainHeight;
-
-                            if (IsValidTreePosition(movedPos))
+                            else
                             {
-
-                                go = Instantiate(prefabArray[random], movedPos, finalRotation, parent);
+                                Vector3 movedPos = newPos;
+                                float terrainHeight = terrain.SampleHeight(movedPos);
+                                movedPos.y = terrainHeight;
+                                Quaternion offsetRot = Quaternion.Euler(0, 90, 0);
+                                Quaternion finalRot = alignedRot * offsetRot;
+                                go = Instantiate(prefab, movedPos, finalRot, parent);
 
                                 NetworkServer.Spawn(go);
                                 go.name = objectName;
                             }
                         }
-                        else
-                        {
-                            Vector3 movedPos = newPos;
-                            float terrainHeight = terrain.SampleHeight(movedPos);
-                            movedPos.y = terrainHeight;
-                            Quaternion offsetRot = Quaternion.Euler(0, 90, 0);
-                            Quaternion finalRot = alignedRot * offsetRot;
-                            go = Instantiate(prefab, movedPos, finalRot, parent);
-
-                            NetworkServer.Spawn(go);
-                            go.name = objectName;
-                        }
+                        
                     }
-                    
-                }
-        }
+            }
+            }
     }
     private bool IsValidTreePosition(Vector3 position)
     {
