@@ -59,7 +59,11 @@ public class AttackState : EnemyState
     
     IEnumerator TryAttack()
     {
-        if(enemy.isNormalZombie || enemy.isBloatedZombie){
+        enemy.audioSource.pitch = Random.Range(0.9f, 1.1f);
+        enemy.audioSource.volume = Random.Range(0.9f, 1.1f);
+        enemy.audioSource.PlayOneShot(enemy.attackSounds[Random.Range(0, enemy.attackSounds.Length)]);
+        if (enemy.isNormalZombie || enemy.isBloatedZombie)
+        {
 
             IDamageble damageable = enemy.closestPlayer.GetComponent<IDamageble>();
             NetworkIdentity networkIdentity = enemy.closestPlayer.GetComponent<NetworkIdentity>();
@@ -70,7 +74,8 @@ public class AttackState : EnemyState
                 lastAttackTime = Time.time; // Use Time.time for accurate tracking
                 Debug.Log("Zombie attacked the player!" + damageable);
             }
-        } else if (enemy.isLanchZombie)
+        }
+        else if (enemy.isLanchZombie)
         {
             canCharge = false;
             Debug.Log("launch zombie attacked");
@@ -112,7 +117,8 @@ public class AttackState : EnemyState
             enemy.ChangeAnimation("Zombie idle");
             yield return new WaitForSeconds(postChargeCooldown);
             canCharge = true;
-        }else if (enemy.isExploadZombie)
+        }
+        else if (enemy.isExploadZombie)
         {
             Debug.Log("explode zombie attacked");
             // Optional pre-explosion delay
@@ -120,7 +126,9 @@ public class AttackState : EnemyState
             yield return new WaitForSeconds(0.5f);
 
             enemy.Explode();
-        } else if(enemy.isScreamerZombie){
+        }
+        else if (enemy.isScreamerZombie)
+        {
             lastAttackTime = Time.time; // Use Time.time for accurate tracking
             enemy.ChangeAnimation("scream");
             AlertNearbyZombies();

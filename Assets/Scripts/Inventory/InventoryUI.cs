@@ -12,6 +12,9 @@ public class InventoryUI : MonoBehaviour
     public WeaponPickupController weapon;
     public PunchComboSystem punch;
     public TMP_InputField[] noteInputFields;
+    public AudioSource audioSource;
+    public AudioClip open;
+    public AudioClip close;
     void Start()
     {
         DisableInventoryUI();
@@ -83,10 +86,12 @@ public class InventoryUI : MonoBehaviour
         inventoryCanvasGroup.blocksRaycasts = false;
         inventoryCanvasGroup.alpha = 0; // Set alpha to 0 for full transparency
         player.enabled = true;
-        if(weapon.equippedGun != null && weapon != null){
+        if (weapon.equippedGun != null && weapon != null)
+        {
             weapon.equippedGun.enabled = true;
         }
         punch.enabled = true;
+        audioSource.PlayOneShot(close);
         
     }
 
@@ -97,10 +102,12 @@ public class InventoryUI : MonoBehaviour
         inventoryCanvasGroup.blocksRaycasts = true;
         inventoryCanvasGroup.alpha = 1; // Set alpha to 1 for full opacity
         player.enabled = false;
-        if(weapon.equippedGun != null && weapon != null){
+        if (weapon.equippedGun != null && weapon != null)
+        {
             weapon.equippedGun.enabled = false;
         }
         punch.enabled = false;
+        audioSource.PlayOneShot(open);
         
     }
 }

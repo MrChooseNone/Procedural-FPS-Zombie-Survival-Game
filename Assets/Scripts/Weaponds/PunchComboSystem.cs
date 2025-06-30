@@ -18,6 +18,9 @@ public class PunchComboSystem : NetworkBehaviour
     public bool canPunch = true;
     public float punchDelay;
     public GameObject hitEffectPrefab;
+    public AudioSource audioSource;
+    public AudioClip punchHit;
+    public AudioClip punchMiss;
     
     public float sphereRadius = 0.5f; 
 
@@ -45,7 +48,7 @@ public class PunchComboSystem : NetworkBehaviour
     [ClientRpc]
     void RpcPlayPunchAnimation(int step)
     {
-        
+        audioSource.PlayOneShot(punchMiss);
         canPunch = false;
         animator.CrossFade(comboAnimations[step], 0.1f, 0);
         bodyAnimator.CrossFade(comboAnimations[step] + "Hands", 0.1f, 1);
@@ -117,6 +120,7 @@ public class PunchComboSystem : NetworkBehaviour
                 }
 
                 if(hit == true){
+                    audioSource.PlayOneShot(punchHit);
                     return;
                 }
             }

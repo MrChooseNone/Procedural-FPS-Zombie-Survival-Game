@@ -100,11 +100,21 @@ public class ZombieAI : NetworkBehaviour, IDamageble
     public bool hasExploaded = false;
     private NetworkIdentity networkZombieId;
     public LayerMask obstacleMask;
+    public float eyeHeight;
+    //-----------------Audio--------------------
+    public AudioSource audioSource;
+    public AudioClip[] idleSounds;
+    public AudioClip[] chaseSounds;
+    public AudioClip[] attackSounds;
+    public AudioClip[] deathSounds;
 
-    private CustomNetworkManager Manager{
+    private CustomNetworkManager Manager
+    {
 
-        get{
-            if(manager != null){
+        get
+        {
+            if (manager != null)
+            {
                 return manager;
             }
             return manager = CustomNetworkManager.singleton as CustomNetworkManager;
@@ -203,12 +213,23 @@ public class ZombieAI : NetworkBehaviour, IDamageble
             {
                 Vector3 dirToPlayer = (closestPlayer.transform.position - transform.position).normalized;
                 float angleBetween = Vector3.Angle(transform.forward, dirToPlayer);
-                if(angleBetween < perceptionAngle / 2f){
+
+                if (angleBetween < perceptionAngle / 2f)
+                {
+                    // Adjust raycast origin to enemy's "eye level"
+                    Vector3 eyePosition = transform.position + Vector3.up * eyeHeight; // e.g. eyeHeight = 1.6f
+
                     // Raycast to check for obstacles
-                    if (!Physics.Raycast(transform.position, dirToPlayer, distanceToPlayer, obstacleMask))
+                    if (!Physics.Raycast(eyePosition, dirToPlayer, distanceToPlayer, obstacleMask))
                     {
                         StartFollowingPlayer();
                     }
+
+                    else
+                    {
+                        Debug.DrawRay(eyePosition, dirToPlayer * distanceToPlayer, Color.red);
+                    }
+        
                 }
             }
             else if (distanceToPlayer > perceptionRange && isFollowing && followTime <= 0)
@@ -391,7 +412,9 @@ public class ZombieAI : NetworkBehaviour, IDamageble
 [Server]
     public void Die()
     {
-
+        audioSource.pitch = Random.Range(0.9f, 1.1f);
+        audioSource.volume = Random.Range(0.9f, 1.1f);
+        audioSource.PlayOneShot(deathSounds[Random.Range(0, deathSounds.Length)]);
         if (navAgent != null)
         {
             navAgent.isStopped = true;

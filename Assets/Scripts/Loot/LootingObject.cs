@@ -25,6 +25,9 @@ public class LootableObject : NetworkBehaviour
     public BuildingInteriorLink interiorLink;
     public NetworkIdentity networkIdentity;
     public bool isLink = false;
+    public bool hasLooted = false;
+    public GameObject ReturnSpawnPoint;
+    public bool isTeleportBack = false;
     
 
     void Start()
@@ -35,7 +38,7 @@ public class LootableObject : NetworkBehaviour
 
     void Update()
     {
-        if (isHolding)
+        if (isHolding && !hasLooted)
         {
             lootProgress += Time.deltaTime;
             loadingBarUI.fillAmount = lootProgress / lootTime;
@@ -78,7 +81,10 @@ public class LootableObject : NetworkBehaviour
         loadingBarUI.fillAmount = 0;
 
         CmdSpawnLoot(networkIdentity);
-
+        if (!isLink)
+        { 
+            hasLooted = true;
+        }
         
     }
 
@@ -91,19 +97,35 @@ public class LootableObject : NetworkBehaviour
     [Command(requiresAuthority = false)]
     public void CmdSpawnLoot(NetworkIdentity networkIdentity)
     {
-        if(isLink){
+        if (isLink)
+        {
 
-            if(interiorLink != null && networkIdentity != null && interiorLink.assignedInteriorScene != null){
+            if (interiorLink != null && networkIdentity != null && interiorLink.assignedInteriorScene != null)
+            {
                 if (InteriorSceneManager.Instance == null)
                 {
-                    Debug.LogError("InteriorSceneManager.Instance is null! Did you forget to add it to the scene?");
+                    Debug.LogError("InteriorSceneManager.Instance is null!?");
                     return;
                 }
 
                 interiorLink.AssignInteriorIfNeeded();
                 InteriorSceneManager.Instance.MovePlayerToInterior(networkIdentity, interiorLink.assignedInteriorScene);
+                InteriorSceneManager.Instance.teleportBack = ReturnSpawnPoint;
+            }
+        }
+        else if (isTeleportBack)
+        {
+            if(networkIdentity != null){
+                if (InteriorSceneManager.Instance == null || InteriorSceneManager.Instance.teleportBack == null)
+                {
+                    Debug.LogError("InteriorSceneManager.Instance is null!?");
+                    return;
+                }
+                InteriorSceneManager.Instance.MovePlayerBack(networkIdentity);
             } 
-        } else {
+        }
+        else
+        {
             Debug.Log("looting");
             int lootCount = Random.Range(2, 5);
             int attempts = 0;
@@ -121,7 +143,7 @@ public class LootableObject : NetworkBehaviour
                     Rigidbody rb = lootItem.GetComponent<Rigidbody>();
                     if (rb != null)
                     {
-                            
+
 
                         rb.AddForce(Vector3.forward * lootForce, ForceMode.Impulse);
                     }

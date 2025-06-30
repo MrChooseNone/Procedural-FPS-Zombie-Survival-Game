@@ -29,9 +29,10 @@ class MeshChunkCombiner : NetworkBehaviour
         //CombineByTag("Fence", "FenceChunk");
         //CombineByTag("Tree", "TreeChunk");
         //CombineByTag("Lamp", "LampChunk");
-       // CombineByTag("City", "CityChunk");
+        // CombineByTag("City", "CityChunk");
         //CombineByTag("Frames", "FramesChunk");
         //CombineByTag("Prop", "PropChunk");
+        yield return new WaitForSeconds(10f);
         
         GrassManager localGrassManager = NetworkClient.localPlayer?.GetComponent<GrassManager>();
         

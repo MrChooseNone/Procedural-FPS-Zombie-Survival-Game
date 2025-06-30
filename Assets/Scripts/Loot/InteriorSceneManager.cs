@@ -7,6 +7,7 @@ using System.Collections.Generic;
 public class InteriorSceneManager : NetworkBehaviour
 {
     public static InteriorSceneManager Instance { get; private set; }
+    public GameObject teleportBack;
 
     private HashSet<string> loadedScenes = new HashSet<string>();
 
@@ -28,6 +29,8 @@ public class InteriorSceneManager : NetworkBehaviour
     {
         StartCoroutine(LoadAndTeleport(conn, sceneName));
     }
+
+    
     [Server]
     IEnumerator LoadAndTeleport(NetworkIdentity conn, string sceneName)
     {
@@ -57,7 +60,7 @@ public class InteriorSceneManager : NetworkBehaviour
         {
             SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
         }
-        
+
     }
 
     [TargetRpc]
@@ -67,8 +70,21 @@ public class InteriorSceneManager : NetworkBehaviour
 
         // teleport on server
         networkIdentity.transform.position = spawnPos;
-        
+
     }
 
+    [Server]
+    public void MovePlayerBack(NetworkIdentity conn)
+    {
+        RpcTeleportPlayerBack(conn.connectionToClient, conn);
+    }
+
+    [TargetRpc]
+    void RpcTeleportPlayerBack(NetworkConnectionToClient target, NetworkIdentity networkIdentity)
+    {
+        // teleport on server
+        networkIdentity.transform.position = teleportBack.transform.position;
+
+    }
 
 }

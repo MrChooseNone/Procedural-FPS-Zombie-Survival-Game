@@ -1,144 +1,183 @@
-using TMPro;
 using UnityEngine;
-using UnityEngine.Experimental.GlobalIllumination;
-using UnityEngine.UI; // Only if using UI Text
+using Mirror;
+using System.Collections;
+using TMPro;
 
-public class TimeManager : MonoBehaviour
+public class NetworkTimeManager : NetworkBehaviour
 {
     [Header("Skybox settings")]
     public Material skybox;
     public GameObject sunLight;
 
     [Header("Time Settings")]
-    public float timeScale = 60f; // 1 real second = 1 in-game minute
+    [Tooltip("1 real second = this many in-game minutes")]
+    public float timeScale = 60f;
     public int dayStartHour = 6;
     public int nightStartHour = 18;
-    // public float fullDayLengthInMinutes = 24f; // in-game hours (24h format)
 
     [Header("UI")]
-    public TextMeshProUGUI timeText; // drag your UI Text here in Inspector
+    public TextMeshProUGUI timeText;
 
-    [Header("Time Tracking")]
-    public int currentHour;
-    public int currentMinute;
-    public int daysPassed;
+    [Header("Time Tracking (sync’d)")]
+    [SyncVar(hook=nameof(OnTimeChanged))] 
+    int currentHour;
+    [SyncVar(hook=nameof(OnTimeChanged))] 
+    int currentMinute;
+    [SyncVar(hook=nameof(OnDayCountChanged))] 
+    int daysPassed;
 
-    public bool isDay;
-    public bool isNight;
-
-    private float timeCounter;
-
-    public delegate void DayNightEvent();
-    public event DayNightEvent OnDay;
-    public event DayNightEvent OnNight;
-
-    private bool wasDayLastFrame;
-    public AnimationCurve cubemapTransitionCurve;
+    [Header("Horde")]
     public ZombieSpawner zombieSpawner;
-    public bool hordeSpawned = false;
+    [SyncVar] 
+    bool hordeSpawned = false;
 
+    private float _timeCounter; 
+    
+    [SerializeField] NetworkAudioManager audioManager = null;
 
-    void Start()
+    #region Server Logic
+    public override void OnStartServer()
     {
+        // Initialize
         currentHour = dayStartHour;
         currentMinute = 0;
-        wasDayLastFrame = true;
-        isDay = true;
-        isNight = false;
+        daysPassed = 0;
+        hordeSpawned = false;
+        _timeCounter = 0f;
+
+        StartCoroutine(DayNightLoop());
+    }
+
+    [Server]
+    IEnumerator DayNightLoop()
+    {
+        while (true)
+        {
+            // advance internal clock
+            _timeCounter += Time.deltaTime * timeScale;
+            if (_timeCounter >= 60f)
+            {
+                _timeCounter -= 60f;
+                AdvanceMinute();
+            }
+
+            yield return null;
+        }
+    }
+
+    [Server]
+    void AdvanceMinute()
+    {
+        currentMinute++;
+        if (currentMinute >= 60)
+        {
+            currentMinute = 0;
+            currentHour++;
+
+            // new day
+            if (currentHour >= 24)
+            {
+                currentHour = 0;
+                daysPassed++;
+                hordeSpawned = false;
+            }
+
+            // day/night events
+            if (currentHour == dayStartHour)
+            {
+                RpcOnDay();
+                audioManager.TriggerAmbientChange(0);
+            }
+            else if (currentHour == nightStartHour)
+            {
+                RpcOnNight();
+                audioManager.TriggerAmbientChange(1);
+            }
+
+            // possible horde spawn at start of night
+            if (currentHour == nightStartHour && !hordeSpawned)
+                TrySpawnHorde();
+                audioManager.TriggerHordeScream();
+        }
+    }
+
+    [Server]
+    void TrySpawnHorde()
+    {
+        hordeSpawned = true;
+        int hordeSize = (daysPassed + 1) * 2;
+        zombieSpawner.SpawnHorde(hordeSize);
+    }
+
+    [ClientRpc]
+    void RpcOnDay()
+    {
+        // clients can hook into day‐start if needed
+        Debug.Log("Day has dawned!");
+       
+    }
+
+    [ClientRpc]
+    void RpcOnNight()
+    {
+        Debug.Log("Night falls—and the horde stirs!");
+    }
+    #endregion
+
+    #region Client Logic
+    void OnTimeChanged(int oldVal, int newVal)
+    {
+        // both hour & minute use this hook to refresh UI immediately
+        UpdateUI();
+    }
+
+    void OnDayCountChanged(int oldVal, int newVal)
+    {
+        UpdateUI();
+    }
+
+    public override void OnStartClient()
+    {
+        // initial visuals
+        UpdateUI();
+        UpdateSkybox();
     }
 
     void Update()
     {
-        UpdateTime();
-        UpdateUI();
-        HandleDayNightSwitch();
+        if (!isClient) return;
+
+        // continuously adjust skybox/sun based on synced time
         UpdateSkybox();
-        CheckHordeSpawn();
     }
+    #endregion
 
-    void UpdateSkybox(){
-        float transitionValue = cubemapTransitionCurve.Evaluate(GetNormalizedTimeOfDay());
-        skybox.SetFloat("_CubemapTransition", transitionValue);
-        // Simulate sun rotation over a full 24h cycle
-        float t = GetNormalizedTimeOfDay(); // 0 to 1
-        float sunAngle = Mathf.Lerp(-90f, 270f, t); // Rises in east, sets in west
-        sunLight.transform.rotation = Quaternion.Euler(sunAngle, 170f, 0f);
-    }
-
-    void UpdateTime()
-    {
-        timeCounter += Time.fixedDeltaTime * timeScale;
-
-        while (timeCounter >= 60f)
-        {
-            currentMinute++;
-            timeCounter -= 60f;
-
-            if (currentMinute >= 60)
-            {
-                currentMinute = 0;
-                currentHour++;
-
-                if (currentHour >= 24)
-                {
-                    currentHour = 0;
-                    daysPassed++;
-                    Debug.Log("Day passed: " + daysPassed);
-
-                    // Call this to maybe spawn a horde
-                    
-                }
-            }
-        }
-    }
-
+    #region UI & Skybox
     void UpdateUI()
     {
-        if (timeText != null)
-        {
-            string hourStr = currentHour.ToString("00");
-            string minStr = currentMinute.ToString("00");
-            timeText.text = $"Day {daysPassed + 1} - {hourStr}:{minStr}";
-        }
+        if (timeText == null) return;
+        timeText.text = $"Day {daysPassed + 1} – {currentHour:00}:{currentMinute:00}";
     }
 
-    void HandleDayNightSwitch()
+    void UpdateSkybox()
     {
-        isDay = currentHour >= dayStartHour && currentHour < nightStartHour;
-        isNight = !isDay;
+        float norm = GetNormalizedTimeOfDay();
+        float t     = Mathf.Lerp(-90f, 270f, norm);
+        sunLight.transform.rotation = Quaternion.Euler(t, 170f, 0f);
 
-        if (isDay != wasDayLastFrame)
+        // optional: if your shader uses a transition curve
+        if (skybox.HasProperty("_CubemapTransition"))
         {
-            if (isDay)
-                OnDay?.Invoke();
-            else
-                OnNight?.Invoke();
-
-            wasDayLastFrame = isDay;
+            float ct = Mathf.Clamp01((currentHour * 60f + currentMinute) / (24f * 60f));
+            skybox.SetFloat("_CubemapTransition", ct);
         }
     }
+    #endregion
 
-    void CheckHordeSpawn()
-    {
-        // Example: spawn a horde every 3rd day
-        if ((daysPassed + 1) % 3 == 0 && !hordeSpawned)
-        {
-            Debug.Log("Horde incoming tonight!");
-            
-            int hordeSize = daysPassed * 2; // scale with day
-            zombieSpawner.SpawnHorde(hordeSize);
-            hordeSpawned = true;
-            float resetTime = 0.02f*timeScale*1440f; // 0.02 is fixed time, timescale is the variable, 50 gets 24 minutes per day, 1440 is the amount of minutes per day
-            Invoke("ResetHord", resetTime);
-            Debug.Log("Horde incoming! Size: " + hordeSize);
-        }
-    }
-    void ResetHord(){
-        hordeSpawned = false;
-    }
-
+    #region Helpers
     public float GetNormalizedTimeOfDay()
     {
         return (currentHour * 60f + currentMinute) / (24f * 60f);
     }
+    #endregion
 }

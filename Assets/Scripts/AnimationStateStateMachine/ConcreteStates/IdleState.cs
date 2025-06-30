@@ -4,6 +4,7 @@ using UnityEngine.AI;
 public class IdleState : EnemyState
 {
     private float waitTime;
+    private float soundTime;
     private Vector3 _targetPos;
     private bool isMoving = false; // Track if zombie is currently moving
     public float wiggleRoom = 0.1f;
@@ -20,11 +21,13 @@ public class IdleState : EnemyState
         waitTime = Random.Range(2f, 5f); // Initial wait before first move
         _targetPos = enemy.transform.position; // Stay in place at first
         isMoving = false;
+        soundTime = Random.Range(2f, 5f); // Initial wait before first move
     }
 
     public override void FrameUpdate()
     {
         base.FrameUpdate();
+    
 
         if (enemy.isFollowing)
         {
@@ -32,10 +35,18 @@ public class IdleState : EnemyState
             return;
         }
         waitTime -= Time.deltaTime;
+        soundTime -= Time.deltaTime;
         if (waitTime <= 0)
         {
             isMoving = false;
-            
+
+        }
+        if (soundTime <= 0)
+        {
+            enemy.audioSource.pitch = Random.Range(0.9f, 1.1f);
+            enemy.audioSource.volume = Random.Range(0.9f, 1.1f);
+            enemy.audioSource.PlayOneShot(enemy.idleSounds[Random.Range(0, enemy.idleSounds.Length)]);
+            soundTime = Random.Range(2f, 5f); // Initial wait before first move
         }
         
 

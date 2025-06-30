@@ -182,8 +182,16 @@ public class FirstPersonController : NetworkBehaviour
     public AudioSource walkSource;
     public AudioSource sprintSource;
     public SoundEmitter soundEmitter;
+    public AudioSource audioSource;
+    public AudioClip crouch;
+    public AudioClip standUp;
+    public AudioClip jump;
+    public AudioClip push;
 
-    
+    //crouch
+    private Vector3 originalCameraPos;
+
+
 
 
 
@@ -209,24 +217,26 @@ public class FirstPersonController : NetworkBehaviour
 
     void Start()
     {
-        if(!isLocalPlayer){
+        if (!isLocalPlayer)
+        {
             playerCamera.enabled = false;
             return;
         }
         //remove arms for local player
-        
-            // rightArm.transform.localScale = Vector3.zero;
-            // leftArm.transform.localScale = Vector3.zero;
-            head.transform.localScale = Vector3.zero;
-        
+
+        // rightArm.transform.localScale = Vector3.zero;
+        // leftArm.transform.localScale = Vector3.zero;
+        head.transform.localScale = Vector3.zero;
+
 
         MeshRenderer mesh = GetComponent<MeshRenderer>();
-        if(mesh != null){
+        if (mesh != null)
+        {
             mesh.enabled = false;
         }
 
 
-        
+
         soundEmitter = gameObject.GetComponent<SoundEmitter>();
 
         rb = GetComponent<Rigidbody>();
@@ -244,12 +254,12 @@ public class FirstPersonController : NetworkBehaviour
             sprintCooldownReset = sprintCooldown;
         }
         Debug.Log("start is local");
-        if(lockCursor)
+        if (lockCursor)
         {
             Cursor.lockState = CursorLockMode.Locked;
         }
 
-        if(crosshair)
+        if (crosshair)
         {
             crosshairObject.sprite = crosshairImage;
             crosshairObject.color = crosshairColor;
@@ -261,9 +271,9 @@ public class FirstPersonController : NetworkBehaviour
 
         #region Sprint Bar
 
-        
 
-        if(useSprintBar)
+
+        if (useSprintBar)
         {
             sprintBarBG.gameObject.SetActive(true);
             sprintBar.gameObject.SetActive(true);
@@ -277,7 +287,7 @@ public class FirstPersonController : NetworkBehaviour
             // sprintBarBG.rectTransform.sizeDelta = new Vector3(sprintBarWidth, sprintBarHeight, 0f);
             // sprintBar.rectTransform.sizeDelta = new Vector3(sprintBarWidth - 2, sprintBarHeight - 2, 0f);
 
-            
+
         }
         else
         {
@@ -288,6 +298,8 @@ public class FirstPersonController : NetworkBehaviour
         #endregion
 
         weaponController = GetComponent<WeaponPickupController>();
+
+        originalCameraPos = playerCamera.transform.localPosition;
     }
 
 
@@ -425,10 +437,7 @@ public class FirstPersonController : NetworkBehaviour
         if (enableJump && Input.GetKeyDown(jumpKey) && isGrounded)
         {
             Jump();
-        }
-        if (isGrounded)
-        {
-            isJumping = false;
+            playerCanMove = false;
         }
         if (isJumping)
         {
@@ -437,6 +446,10 @@ public class FirstPersonController : NetworkBehaviour
         else
         {
             playerCanMove = true;
+        }
+        if (isGrounded)
+        {
+            isJumping = false;
         }
 
         #endregion
@@ -525,7 +538,7 @@ public class FirstPersonController : NetworkBehaviour
             if (sprintSource.isPlaying) sprintSource.Stop();
         }
 
-        if (isWalking)
+        if (isWalking && !isCrouched)
         {
             soundEmitter.EmittSound(8);
         }
@@ -548,6 +561,7 @@ public class FirstPersonController : NetworkBehaviour
                 pushDirection.Normalize();
 
                 pushable.CmdApplyPush(pushDirection * pushStrength);
+                audioSource.PlayOneShot(push);
                 
                 
             }
@@ -609,28 +623,36 @@ public class FirstPersonController : NetworkBehaviour
 			// ChangeAnimation(boolNameAim, 0.2f);
 		}
         
-        private void ChangeAnimation(string name, float time = 0.2f){
+        private void ChangeAnimation(string name, float time = 0.2f, bool body = false){
             if(currAnimation != name){
-                CmdChangeAnimation(name,time);
+                CmdChangeAnimation(name, time, body);
             }
         }
 
     [Command]
-    public void CmdChangeAnimation(string name, float time)
+    public void CmdChangeAnimation(string name, float time, bool body)
     {
         
         
-        RpcChangeAnimation(name, time); 
+        RpcChangeAnimation(name, time, body); 
     }
 
     [ClientRpc]
-    void RpcChangeAnimation(string name, float time){
+    void RpcChangeAnimation(string name, float time, bool body){
         Debug.Log(name);
+        if (body)
+        {
+            currAnimation = name;
             
-                currAnimation = name;
-                playerAnimator.CrossFade(name, time, 0);
-                string tempHands = name + "Hands";
-                handAnimator.CrossFade(tempHands, time, 1);
+            bodyAnimator.CrossFade(name, time, 2);
+        }
+        else
+        {
+            currAnimation = name;
+            playerAnimator.CrossFade(name, time, 0);
+            string tempHands = name + "Hands";
+            handAnimator.CrossFade(tempHands, time, 1);
+        }
             
     }
     void FixedUpdate()
@@ -754,13 +776,14 @@ public class FirstPersonController : NetworkBehaviour
 
             ChangeAnimation("NoWeaponJump", 0.2f);
         }
-        
+
         // Adds force to the player rigidbody to jump
         if (isGrounded)
         {
             rb.AddForce(0f, jumpPower, 0f, ForceMode.Impulse);
             isGrounded = false;
             isJumping = true;
+            audioSource.PlayOneShot(jump);
         }
         soundEmitter.EmittSound(20);
         // When crouched and using toggle system, will uncrouch for a jump
@@ -774,21 +797,29 @@ public class FirstPersonController : NetworkBehaviour
     {
         // Stands player up to full height
         // Brings walkSpeed back up to original speed
-        if(isCrouched)
+        if (isCrouched)
         {
-            transform.localScale = new Vector3(originalScale.x, originalScale.y, originalScale.z);
+            //transform.localScale = new Vector3(originalScale.x, originalScale.y, originalScale.z);
             walkSpeed /= speedReduction;
-
+            ChangeAnimation("standing", 0.2f, true);
+            //Vector3 currentPos = playerCamera.transform.localPosition;
+            playerCamera.transform.localPosition = new Vector3(originalCameraPos.x, originalCameraPos.y, originalCameraPos.z);
             isCrouched = false;
+            audioSource.PlayOneShot(standUp);
         }
         // Crouches player down to set height
         // Reduces walkSpeed
         else
         {
-            transform.localScale = new Vector3(originalScale.x, crouchHeight, originalScale.z);
+            //transform.localScale = new Vector3(originalScale.x, crouchHeight, originalScale.z);
             walkSpeed *= speedReduction;
-
+            ChangeAnimation("crouch", 0.2f, true);
+            //Vector3 currentPos = playerCamera.transform.localPosition;
+            playerCamera.transform.localPosition = new Vector3(originalCameraPos.x, -0.45f, 0.35f);
+            
             isCrouched = true;
+            audioSource.PlayOneShot(crouch);
+
         }
     }
 

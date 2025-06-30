@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class ChaseState : EnemyState
 {
-    
+    private float soundTime;
 
     public ChaseState(ZombieAI enemy, EnemySTateMachine enemySTateMachine) : base(enemy, enemySTateMachine)
     {
@@ -18,6 +18,10 @@ public class ChaseState : EnemyState
         AlertNearbyZombies();
         enemy.ChangeAnimation("Zombie run");
         Debug.Log("entered chase state");
+        enemy.audioSource.pitch = Random.Range(0.9f, 1.1f);
+        enemy.audioSource.volume = Random.Range(0.9f, 1.1f);
+        enemy.audioSource.PlayOneShot(enemy.chaseSounds[Random.Range(0, enemy.chaseSounds.Length)]);
+        soundTime = Random.Range(2f, 5f); // Initial wait before first move
     }
 
     public override void ExitState()
@@ -28,9 +32,20 @@ public class ChaseState : EnemyState
     public override void FrameUpdate()
     {
         base.FrameUpdate();
-        if(!enemy.isFollowing){
+        soundTime -= Time.deltaTime;
+        if (soundTime <= 0)
+        {
+            enemy.audioSource.pitch = Random.Range(0.9f, 1.1f);
+            enemy.audioSource.volume = Random.Range(0.9f, 1.1f);
+            enemy.audioSource.PlayOneShot(enemy.chaseSounds[Random.Range(0, enemy.chaseSounds.Length)]);
+            soundTime = Random.Range(2f, 5f); // Initial wait before first move
+        }
+        if (!enemy.isFollowing)
+        {
             enemy.STateMachine.ChangeState(enemy.IdleState);
-        } else if(enemy.isAttacking){
+        }
+        else if (enemy.isAttacking)
+        {
             enemy.STateMachine.ChangeState(enemy.attackState);
         }
         float speedMultiplier = Mathf.Clamp01(1 - (enemy.distanceToPlayer / enemy.perceptionRange)); 

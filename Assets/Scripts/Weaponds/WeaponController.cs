@@ -67,9 +67,13 @@ public class WeaponController : NetworkBehaviour
     public AudioClip ReloadClip;
     public AudioClip EmptyClip;
     public AudioClip noAmmoClip;
+    public AudioClip pickupSound;
+    public AudioClip dropSound;
     [SerializeField]
     private AudioSource casingSource;
     public AudioClip[] casingClips;
+    public bool hasPlayed = false;
+    public float impactThreshold;
 
     //-----casing------------
     public GameObject casingPrefab;
@@ -80,13 +84,8 @@ public class WeaponController : NetworkBehaviour
 
     //------smoke--------------
     public ParticleSystem smoke;
-
     //inventory
-
     public InventoryManager1 inventory;
-
-    
-
     public InteractivePopup interactivePopup;
 
     //---------------Melee----------------
@@ -213,6 +212,30 @@ public class WeaponController : NetworkBehaviour
         
     }
 
+    void OnCollisionEnter(Collision collision)
+    {
+        // Check if collided with ground (tagged "Ground") and strong enough
+        if (!hasPlayed )
+        {
+            float impactForce = collision.relativeVelocity.magnitude;
+            if (impactForce >= impactThreshold)
+            {
+                fireSource.pitch = Random.Range(0.9f, 1.1f);
+                fireSource.volume = Random.Range(0.6f, 0.8f);
+                fireSource.PlayOneShot(dropSound);
+                hasPlayed = true;
+            }
+        }
+    }
+
+    void OnCollisionExit(Collision collision)
+    {
+        // Reset flag when gun leaves the ground
+        
+            hasPlayed = false;
+        
+    }
+
     // private void OnTriggerEnter(Collider other)
     // {
     //     if (other.CompareTag("Player") && !isPlayerInRange) // Ensure the object is the player
@@ -270,7 +293,9 @@ public class WeaponController : NetworkBehaviour
         Debug.Log("identityPlayer is set" + identityPlayer);
 
         RpcSetParent(player);
-
+        fireSource.pitch = Random.Range(0.9f, 1.1f);
+        fireSource.volume = Random.Range(0.9f, 1.1f);
+        fireSource.PlayOneShot(pickupSound);
 
     }
     [ClientRpc]
@@ -391,6 +416,7 @@ public class WeaponController : NetworkBehaviour
         }
         if(fireSource != null && ReloadClip != null){
                 fireSource.pitch = Random.Range(0.9f, 1.1f);
+                fireSource.volume = Random.Range(0.9f, 1.1f);
                 fireSource.PlayOneShot(ReloadClip);
         }
     }
@@ -631,6 +657,7 @@ public class WeaponController : NetworkBehaviour
         }
         if(fireSource != null && fireClip != null){
                 fireSource.pitch = Random.Range(0.9f, 1.1f);
+                fireSource.volume = Random.Range(0.9f, 1.1f);
                 fireSource.PlayOneShot(fireClip);
         }
     }

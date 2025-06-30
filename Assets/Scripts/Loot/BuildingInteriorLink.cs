@@ -5,6 +5,7 @@ public class BuildingInteriorLink : NetworkBehaviour
 {
     [SyncVar]
     public string assignedInteriorScene = "";
+    
 
     private static readonly string[] interiorOptions = new string[]
     {
