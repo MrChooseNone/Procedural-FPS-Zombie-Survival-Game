@@ -49,6 +49,9 @@ public class PlayerBuilding : NetworkBehaviour
     }
 
     private List<BuildItem> unlockedItems = new List<BuildItem>();
+    public float snapRange;
+    public LayerMask wallLayer;
+    public float snapThreshold;
 
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -183,12 +186,16 @@ public class PlayerBuilding : NetworkBehaviour
     private void FinishPlacing(string itemCost, int ItemAmountCost, GameObject prefab)
     {
         if (!isLocalPlayer) return;
-  
+
         CmdSpawnWall(prefab.transform.position, prefab.transform.rotation, currentItem.name);
         Destroy(previewPrefab);
 
         ItemStack itemStack = inventory.FindItemByName(currentItem.itemCost);
-        inventory.CmdRemoveItem(itemStack.uniqueKey, ItemAmountCost);
+        if (itemStack.itemName != null)
+        {
+            inventory.CmdRemoveItem(itemStack.uniqueKey, ItemAmountCost);
+
+        }
         isPlacing = false;
         
     }
@@ -200,14 +207,51 @@ public class PlayerBuilding : NetworkBehaviour
         if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out RaycastHit hit, 10f, placmentLayer))
         {
             start = hit.point;
-            previewPrefab.transform.position = start;
-            previewPrefab.transform.rotation = playerCamera.transform.rotation;
+            if (previewPrefab != null)
+            {
+                previewPrefab.transform.position = start;
+                float newRot = playerCamera.transform.eulerAngles.y;
+                previewPrefab.transform.rotation = Quaternion.Euler(0f, newRot, 0f);
+            }
         }
-        else
+            else
+            {
+                start = playerCamera.transform.position + playerCamera.transform.forward * 10f;
+                if (previewPrefab != null)
+                {
+                    previewPrefab.transform.position = start;
+                    previewPrefab.transform.rotation = playerCamera.transform.rotation;
+
+                }
+            }
+        Collider[] nearby = Physics.OverlapSphere(previewPrefab.transform.position, snapRange, wallLayer);
+
+        foreach (Collider col in nearby)
         {
-            start = playerCamera.transform.position + playerCamera.transform.forward * 10f;
-            previewPrefab.transform.position = start;
-            previewPrefab.transform.rotation = playerCamera.transform.rotation;
+            Snappable snappable = col.GetComponent<Snappable>();
+            if (snappable == null) continue;
+
+            foreach (Transform theirPoint in snappable.snapPoints)
+            {
+                foreach (Transform myPoint in previewPrefab.GetComponent<Snappable>().snapPoints)
+                {
+                    float dist = Vector3.Distance(myPoint.position, theirPoint.position);
+                    if (dist < snapThreshold)
+                    {
+                        // Snap logic
+                        Vector3 offset = myPoint.position - previewPrefab.transform.position;
+                        previewPrefab.transform.position = theirPoint.position - offset;
+
+                        // Optional: Match rotation (90° increments)
+                        previewPrefab.transform.rotation = Quaternion.LookRotation(-theirPoint.forward);
+                        break;
+                    }
+                }
+            }
+        }
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            previewPrefab.transform.Rotate(Vector3.up, 15f);
         }
         if (Input.GetMouseButton(0))
         {
