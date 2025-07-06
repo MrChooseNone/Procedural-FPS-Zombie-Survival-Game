@@ -379,11 +379,21 @@ public class ZombieAI : NetworkBehaviour, IDamageble
     public void Damage(float amount, NetworkIdentity networkIdentity = null, NetworkIdentity shooterIdent = null)
     {
         CurrentHealth -= amount;
-        DynamicTextManager dynamicTextManager = shooterIdent.GetComponent<DynamicTextManager>();
-        if (dynamicTextManager != null)
+        if (shooterIdent != null)
         {
-            dynamicTextManager.CreateText(textStartPoint.position, amount.ToString(), dynamicTextManager.defaultData);
-            Debug.Log("got the text manager!");
+            DynamicTextManager dynamicTextManager = shooterIdent.GetComponent<DynamicTextManager>();
+            if (dynamicTextManager != null)
+            {
+                if (amount > 9000) //head shot
+                {
+                    dynamicTextManager.CreateText(textStartPoint.position, "Crit", dynamicTextManager.critData);
+                }
+                else
+                {
+                    dynamicTextManager.CreateText(textStartPoint.position, amount.ToString(), dynamicTextManager.defaultData);
+                }
+                Debug.Log("got the text manager!");
+            }
         }
 
         if (CurrentHealth <= 0f)

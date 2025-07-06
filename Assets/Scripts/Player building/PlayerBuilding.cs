@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Mirror;
+using TMPro;
 using Unity.Mathematics;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -46,9 +47,11 @@ public class PlayerBuilding : NetworkBehaviour
         public int unlockLevel; // unlock requirement
         public string itemCost;
         public int ItemAmountCost;
+        public Color color;
     }
 
     private List<BuildItem> unlockedItems = new List<BuildItem>();
+    public float itemSize;
     public float snapRange;
     public LayerMask wallLayer;
     public float snapThreshold;
@@ -150,8 +153,16 @@ public class PlayerBuilding : NetworkBehaviour
             GameObject buttonObj = Instantiate(buttonPrefab, gridParent);
             var icon = buttonObj.GetComponentInChildren<Image>();
             icon.sprite = item.icon;
+            icon.rectTransform.localScale = icon.rectTransform.localScale * itemSize;
+            icon.color = item.color;
 
             var btn = buttonObj.GetComponent<Button>();
+            var btnText = buttonObj.GetComponentInChildren<TextMeshProUGUI>();
+            if (btnText != null)
+            {
+                btnText.text = item.name;
+            }
+            
             int index = i;
             btn.onClick.AddListener(() => {
                 SelectBuildable(item);
@@ -191,16 +202,19 @@ public class PlayerBuilding : NetworkBehaviour
     {
         if (!isLocalPlayer) return;
 
-        CmdSpawnWall(prefab.transform.position, prefab.transform.rotation, currentItem.name);
         Destroy(previewPrefab);
 
         ItemStack itemStack = inventory.FindItemByName(currentItem.itemCost);
         if (itemStack.itemName != null)
         {
-            inventory.CmdRemoveItem(itemStack.uniqueKey, ItemAmountCost);
-            if (playerSkills != null)
+            if (itemStack.quantity >= ItemAmountCost)
             {
-                playerSkills.GainXP(SkillType.Engineering, 20f);
+                inventory.CmdRemoveItem(itemStack.uniqueKey, ItemAmountCost);
+                if (playerSkills != null)
+                {
+                    playerSkills.GainXP(SkillType.Engineering, 20f);
+                }
+                CmdSpawnWall(prefab.transform.position, prefab.transform.rotation, currentItem.name);
             }
         }
         isPlacing = false;
