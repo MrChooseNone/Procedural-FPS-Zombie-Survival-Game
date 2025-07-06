@@ -25,19 +25,21 @@ public class ProjectileBullet : NetworkBehaviour
     {
         shooterIdentity = shooter;
     }
+	
+
 
     public override void OnStartServer()
 	{
 		rb = GetComponent<Rigidbody>();
 		rb.linearVelocity = transform.forward * projectileImpulse;
-		
+
 		// Ensure authority is transferred to the player who shot the bullet
 		NetworkIdentity netIdentity = GetComponent<NetworkIdentity>();
 		// if (netIdentity != null && netIdentity.connectionToClient != null)
 		// {
 		// 	netIdentity.AssignClientAuthority(netIdentity.connectionToClient);
 		// }
-		
+
 		Destroy(gameObject, lifeTime);
 	}
     void Update()
@@ -137,7 +139,7 @@ public class ProjectileBullet : NetworkBehaviour
 					IDamageble damageable = hitObject.GetComponentInParent<IDamageble>();
 					if (damageable != null) 
 					{
-						damageable.Damage(damage, targetIdentity);
+						damageable.Damage(damage, targetIdentity, shooterIdent);
 					}
 					
 					ZombieAI zombie = hitObject.GetComponentInParent<ZombieAI>();

@@ -106,7 +106,7 @@ public class HealthSystem : NetworkBehaviour, IDamageble
 
         }
     }
-    public void Damage( float damage, NetworkIdentity target)
+    public void Damage( float damage, NetworkIdentity target, NetworkIdentity shooterident = null)
     {
         if (target != null) 
         {

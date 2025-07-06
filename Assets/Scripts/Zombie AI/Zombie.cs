@@ -372,12 +372,21 @@ public class ZombieAI : NetworkBehaviour, IDamageble
 
     }
 [Server]
-    public void Damage(float amount, NetworkIdentity networkIdentity = null)
+    public void Damage(float amount, NetworkIdentity networkIdentity = null, NetworkIdentity shooterIdent = null)
     {
         CurrentHealth -= amount;
-        
-        if(CurrentHealth <= 0f){
+
+        if (CurrentHealth <= 0f)
+        {
             Die();
+            if (shooterIdent != null)
+            {
+                PlayerSkills playerSkills = shooterIdent.GetComponent<PlayerSkills>();
+                if (playerSkills != null)
+                {
+                    playerSkills.GainXP(SkillType.Marksmanship, 20f);
+                }
+            }
         } 
     }
 [Server]

@@ -52,6 +52,7 @@ public class PlayerBuilding : NetworkBehaviour
     public float snapRange;
     public LayerMask wallLayer;
     public float snapThreshold;
+    public PlayerSkills playerSkills;
 
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -179,7 +180,10 @@ public class PlayerBuilding : NetworkBehaviour
         currentItem = item;
         if (!isPlacing && currentItem != null)
         {
-            StartPlacing(currentItem.previewPrefab);
+            if (playerSkills.HasUnlocked(SkillType.Engineering, item.unlockLevel))
+            {
+                StartPlacing(currentItem.previewPrefab);
+            }
         }
     }
 
@@ -194,7 +198,10 @@ public class PlayerBuilding : NetworkBehaviour
         if (itemStack.itemName != null)
         {
             inventory.CmdRemoveItem(itemStack.uniqueKey, ItemAmountCost);
-
+            if (playerSkills != null)
+            {
+                playerSkills.GainXP(SkillType.Engineering, 20f);
+            }
         }
         isPlacing = false;
         
