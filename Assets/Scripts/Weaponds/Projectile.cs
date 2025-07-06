@@ -137,7 +137,7 @@ public class ProjectileBullet : NetworkBehaviour
 								Quaternion.identity);
 
 					IDamageble damageable = hitObject.GetComponentInParent<IDamageble>();
-					if (damageable != null) 
+					if (damageable != null && shooterIdent != null && targetIdentity != null) 
 					{
 						damageable.Damage(damage, targetIdentity, shooterIdent);
 					}

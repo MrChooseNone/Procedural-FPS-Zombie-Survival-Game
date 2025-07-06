@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.AI;
 using Steamworks;
 using System.Linq;
+using UnityEngine.Rendering;
 
 
 
@@ -107,6 +108,9 @@ public class ZombieAI : NetworkBehaviour, IDamageble
     public AudioClip[] chaseSounds;
     public AudioClip[] attackSounds;
     public AudioClip[] deathSounds;
+
+    //-------------floating text-----------------
+    public Transform textStartPoint;
 
     private CustomNetworkManager Manager
     {
@@ -375,6 +379,12 @@ public class ZombieAI : NetworkBehaviour, IDamageble
     public void Damage(float amount, NetworkIdentity networkIdentity = null, NetworkIdentity shooterIdent = null)
     {
         CurrentHealth -= amount;
+        DynamicTextManager dynamicTextManager = shooterIdent.GetComponent<DynamicTextManager>();
+        if (dynamicTextManager != null)
+        {
+            dynamicTextManager.CreateText(textStartPoint.position, amount.ToString(), dynamicTextManager.defaultData);
+            Debug.Log("got the text manager!");
+        }
 
         if (CurrentHealth <= 0f)
         {
