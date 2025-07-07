@@ -22,6 +22,14 @@ public class PlayerSkills : MonoBehaviour
     {
         return skills[(int)type].level;
     }
+    public float GetSkillXp(SkillType type)
+    {
+        return skills[(int)type].xp;
+    }
+    public float GetSkillMaxXp(SkillType type)
+    {
+        return skills[(int)type].xpToNextLevel;
+    }
 
     public bool HasUnlocked(SkillType type, int requiredLevel)
     {

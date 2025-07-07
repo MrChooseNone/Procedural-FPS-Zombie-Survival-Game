@@ -15,6 +15,7 @@ public class ZombieAI : NetworkBehaviour, IDamageble
     public float perceptionAngle = 120f;
     //public float spawnRange = 50f;        // Range within which the zombie can spawn
     public float followSpeed = 3.5f;      // Speed at which the zombie follows the player
+    public float currentFollowSpeed;
 
    
     public NavMeshAgent navAgent;        // Reference to the zombie's NavMeshAgent
@@ -131,7 +132,8 @@ public class ZombieAI : NetworkBehaviour, IDamageble
     {
         navGen = FindAnyObjectByType<NavMeshGenerator>();
         navAgent = GetComponent<NavMeshAgent>();
-        navAgent.speed = followSpeed;
+        currentFollowSpeed = followSpeed;
+        navAgent.speed = currentFollowSpeed;
         //----------state machine-------------
         STateMachine = new EnemySTateMachine();
         IdleState = new IdleState(this, STateMachine);
@@ -374,6 +376,16 @@ public class ZombieAI : NetworkBehaviour, IDamageble
             navAgent.SetDestination(randomDestination);
         }
 
+    }
+    [Server]
+    public void ModifySpeed(float slowFactor)
+    {
+        currentFollowSpeed = followSpeed * slowFactor;
+    }
+    [Server]
+    public void RestoreSpeed()
+    {
+        currentFollowSpeed = followSpeed;
     }
 [Server]
     public void Damage(float amount, NetworkIdentity networkIdentity = null, NetworkIdentity shooterIdent = null)

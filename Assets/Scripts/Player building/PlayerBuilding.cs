@@ -36,6 +36,12 @@ public class PlayerBuilding : NetworkBehaviour
     private int currentPage = 0;
     public BuildItem currentItem;
     private bool isBuildMenu = false;
+    [System.Serializable]
+    public class ResourceCost
+    {
+        public string resourceName; // e.g., "Wood", "Stone", etc.
+        public int amount;
+    }
 
     [System.Serializable]
     public class BuildItem
@@ -45,8 +51,7 @@ public class PlayerBuilding : NetworkBehaviour
         public GameObject previewPrefab;
         public Sprite icon;
         public int unlockLevel; // unlock requirement
-        public string itemCost;
-        public int ItemAmountCost;
+        public List<ResourceCost> itemCosts;
         public Color color;
     }
 
@@ -102,7 +107,7 @@ public class PlayerBuilding : NetworkBehaviour
         // Handle updating and finishing placement
         if (isPlacing && currentItem != null)
         {
-            UpdatePlacing(currentItem.itemCost, currentItem.ItemAmountCost, currentItem.prefab);
+            UpdatePlacing(currentItem.prefab);
         }
 
         // Right-click to cancel
@@ -198,30 +203,44 @@ public class PlayerBuilding : NetworkBehaviour
         }
     }
 
-    private void FinishPlacing(string itemCost, int ItemAmountCost, GameObject prefab)
+    private void FinishPlacing( GameObject prefab)
     {
         if (!isLocalPlayer) return;
 
         Destroy(previewPrefab);
-
-        ItemStack itemStack = inventory.FindItemByName(currentItem.itemCost);
-        if (itemStack.itemName != null)
+        bool isPayed = true;
+        foreach (ResourceCost itemCost in currentItem.itemCosts)
         {
-            if (itemStack.quantity >= ItemAmountCost)
+            ItemStack itemStack = inventory.FindItemByName(itemCost.resourceName);
+            if (itemStack.itemName != null)
             {
-                inventory.CmdRemoveItem(itemStack.uniqueKey, ItemAmountCost);
-                if (playerSkills != null)
+                if (itemStack.quantity >= itemCost.amount)
                 {
-                    playerSkills.GainXP(SkillType.Engineering, 20f);
+                    inventory.CmdRemoveItem(itemStack.uniqueKey, itemCost.amount);
                 }
-                CmdSpawnWall(prefab.transform.position, prefab.transform.rotation, currentItem.name);
+                else
+                {
+                    isPayed = false;
+                }
             }
+            else
+            {
+                isPayed = false;
+            }
+        }
+        if (isPayed)
+        {
+            if (playerSkills != null)
+            {
+                playerSkills.GainXP(SkillType.Engineering, 20f);
+            }
+            CmdSpawnWall(prefab.transform.position, prefab.transform.rotation, currentItem.name);   
         }
         isPlacing = false;
         
     }
 
-    private void UpdatePlacing(string itemCost, int ItemAmountCost, GameObject prefab)
+    private void UpdatePlacing( GameObject prefab)
     {
         if (!isLocalPlayer) return;
         Vector3 start = new Vector3(0, 0, 0);
@@ -276,7 +295,7 @@ public class PlayerBuilding : NetworkBehaviour
         }
         if (Input.GetMouseButton(0))
         {
-            FinishPlacing(itemCost, ItemAmountCost, previewPrefab);
+            FinishPlacing(previewPrefab);
         }
         
     }
