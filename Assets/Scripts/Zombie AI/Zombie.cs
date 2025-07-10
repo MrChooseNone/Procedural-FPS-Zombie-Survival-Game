@@ -126,7 +126,10 @@ public class ZombieAI : NetworkBehaviour, IDamageble
         }
     }
 
-    
+    //death x
+    public GameObject XDeathPrefab;
+    public Transform XDeathPos;
+
 
     private void Awake()
     {
@@ -142,7 +145,7 @@ public class ZombieAI : NetworkBehaviour, IDamageble
         STateMachine.Initialize(IdleState);
         ragdollController = GetComponent<RagdollController>();
         rb = GetComponentsInChildren<Rigidbody>();
-        networkZombieId =GetComponent<NetworkIdentity>();
+        networkZombieId = GetComponent<NetworkIdentity>();
     }
 
     // Start is called before the first frame update
@@ -461,6 +464,7 @@ public class ZombieAI : NetworkBehaviour, IDamageble
             navAgent.isStopped = true;
             navAgent.enabled = false;
         }
+        GameObject fx = Instantiate(XDeathPrefab, XDeathPos.position, Quaternion.identity);
 
         // Spawn blood effect on all clients
         if (bloodEffectPrefab != null && !hasSpawnedBlood)

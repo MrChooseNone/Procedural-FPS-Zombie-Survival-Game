@@ -23,11 +23,20 @@ public class LootableObject : NetworkBehaviour
     private bool isHolding = false;
     private float lootProgress = 0f;
     public BuildingInteriorLink interiorLink;
-    public NetworkIdentity networkIdentity;
+    public NetworkIdentity networkIdentity3;
     public bool isLink = false;
     public bool hasLooted = false;
     public GameObject ReturnSpawnPoint;
     public bool isTeleportBack = false;
+    public InteriorCategory category;
+    [SyncVar] private GameObject linkedRoom;
+
+    public GameObject GetLinkedRoom() => linkedRoom;
+    [Server]
+    public void SetLinkedRoom(GameObject room)
+    {
+        linkedRoom = room;
+    }
     
 
     void Start()
@@ -57,7 +66,7 @@ public class LootableObject : NetworkBehaviour
     public void StartLooting(NetworkIdentity networkIdent)
     {
         if (isHolding) return; // Prevent multiple loots at once
-        networkIdentity = networkIdent;
+        networkIdentity3 = networkIdent;
         // targetNetId = networkIdent.netId;
         //Debug.Log(networkIdentity);
         isHolding = true;
@@ -79,11 +88,14 @@ public class LootableObject : NetworkBehaviour
 
         worldCanvas.gameObject.SetActive(false);
         loadingBarUI.fillAmount = 0;
-
-        CmdSpawnLoot(networkIdentity);
-        if (!isLink)
-        { 
-            hasLooted = true;
+        if (networkIdentity3 != null)
+        {
+            CmdSpawnLoot(networkIdentity3);
+            if (!isLink && !isTeleportBack)
+            { 
+                hasLooted = true;
+            }
+            
         }
         
     }
@@ -95,33 +107,41 @@ public class LootableObject : NetworkBehaviour
     }
 
     [Command(requiresAuthority = false)]
-    public void CmdSpawnLoot(NetworkIdentity networkIdentity)
+    public void CmdSpawnLoot(NetworkIdentity networkIdentity2)
     {
         if (isLink)
         {
 
-            if (interiorLink != null && networkIdentity != null && interiorLink.assignedInteriorScene != null)
+            if (networkIdentity2 != null)
             {
                 if (InteriorSceneManager.Instance == null)
                 {
                     Debug.LogError("InteriorSceneManager.Instance is null!?");
                     return;
                 }
-
-                interiorLink.AssignInteriorIfNeeded();
-                InteriorSceneManager.Instance.MovePlayerToInterior(networkIdentity, interiorLink.assignedInteriorScene);
+                if (linkedRoom == null)
+                {
+                    InteriorSceneManager.Instance.MovePlayerToInterior(networkIdentity2, this);
+                }
+                else
+                {
+                    InteriorSceneManager.Instance.TeleportPlayerToRoom(networkIdentity2, linkedRoom);
+                }
+                
+                
                 InteriorSceneManager.Instance.teleportBack = ReturnSpawnPoint;
             }
         }
         else if (isTeleportBack)
         {
-            if(networkIdentity != null){
+            if(networkIdentity2 != null){
                 if (InteriorSceneManager.Instance == null || InteriorSceneManager.Instance.teleportBack == null)
                 {
                     Debug.LogError("InteriorSceneManager.Instance is null!?");
                     return;
                 }
-                InteriorSceneManager.Instance.MovePlayerBack(networkIdentity);
+                Debug.Log("tried teleport back!");
+                InteriorSceneManager.Instance.MovePlayerBack(networkIdentity2);
             } 
         }
         else
@@ -138,17 +158,21 @@ public class LootableObject : NetworkBehaviour
                 if (Random.value <= candidate.dropChance)
                 {
                     GameObject lootItem = Instantiate(candidate.prefab, spawnPoint.position, Quaternion.identity);
-                    NetworkServer.Spawn(lootItem);
-
-                    Rigidbody rb = lootItem.GetComponent<Rigidbody>();
-                    if (rb != null)
+                    if (lootItem != null)
                     {
+                        NetworkServer.Spawn(lootItem);
+
+                        Rigidbody rb = lootItem.GetComponent<Rigidbody>();
+                        if (rb != null)
+                        {
 
 
-                        rb.AddForce(Vector3.forward * lootForce, ForceMode.Impulse);
+                            rb.AddForce(Vector3.forward * lootForce, ForceMode.Impulse);
+                        }
+
+                        lootCount--;
+                        
                     }
-
-                    lootCount--;
                 }
             }
         } 

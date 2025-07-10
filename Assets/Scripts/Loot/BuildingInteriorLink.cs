@@ -9,7 +9,8 @@ public class BuildingInteriorLink : NetworkBehaviour
 
     private static readonly string[] interiorOptions = new string[]
     {
-        "Interior_1"
+        "Interior_1",
+        "Interior_1 1"
     };
 
     private bool initialized = false;

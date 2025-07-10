@@ -12,7 +12,7 @@ public class InventoryManager1 : NetworkBehaviour
     public GameObject itemPrefab;  // Reference to the item prefab
     public int inventorySize = 10;
     public bool inventoryFull = false;
-    public bool isPickingUp = false;
+    //public bool isPickingUp = false;
     //--------------slotSprites-----------
 
     public Sprite[] SlotSprites;
@@ -51,7 +51,8 @@ public class InventoryManager1 : NetworkBehaviour
     [Command]
     public void CmdAddItem(string itemName, int amount , bool isStackable)
     {
-        if(!isPickingUp) RpcAddItem(connectionToClient, itemName, amount, isStackable);
+        //if(!isPickingUp)
+         RpcAddItem(connectionToClient, itemName, amount, isStackable);
     }
 
     [TargetRpc]
@@ -59,7 +60,7 @@ public class InventoryManager1 : NetworkBehaviour
     {
         CheckInventoryFull();
         if(!inventoryFull){
-            isPickingUp = true;
+            //isPickingUp = true;
             if (isStackable)
             {
                 // Stackable item logic: Increase quantity if already in inventory
@@ -303,7 +304,7 @@ private void RpcUpdateItemOnClient(NetworkConnectionToClient target, int indexSl
     newItemGO.transform.localPosition = slot.Center.localPosition;
     newItemGO.transform.localScale = new Vector3(1f,1f,1f);
     newItemGO.transform.localRotation = Quaternion.identity;
-    isPickingUp = false;
+    //isPickingUp = false;
 }
 
 
@@ -341,7 +342,7 @@ private void RpcUpdateItemOnClient(NetworkConnectionToClient target, int indexSl
                     slotInv.amount.text = updatedStack.quantity.ToString();
                     slotInv.nameOfItem.text = updatedStack.itemName;
         
-                    isPickingUp = false;
+                    //isPickingUp = false;
                     return;
                 }
             }

@@ -6,14 +6,39 @@ using System.Collections.Generic;
 
 public class InteriorSceneManager : NetworkBehaviour
 {
+    [System.Serializable]
+    public class RoomCategoryPrefabs
+    {
+        public InteriorCategory category;
+        public List<GameObject> prefabs;
+    }
+
+    class SpawnedRoom
+    {
+        public GameObject instance;
+        public Vector3 position;
+        public InteriorCategory category;
+        public HashSet<NetworkIdentity> playersInside = new();
+        public float lastEmptyTime = -1f;
+    }
+
+    List<SpawnedRoom> activeRooms = new();
+    public int maxActiveRooms = 5;
+    public float roomSpacing = 100f;  // vertical distance between rooms
+
+
+    public List<RoomCategoryPrefabs> roomCategories;
+
+    private Dictionary<InteriorCategory, List<GameObject>> prefabLookup;
+
     public static InteriorSceneManager Instance { get; private set; }
     public GameObject teleportBack;
 
-    private HashSet<string> loadedScenes = new HashSet<string>();
+    // private HashSet<string> loadedScenes = new HashSet<string>();
+
 
     private void Awake()
     {
-        // if another instance already exists, destroy this one
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -22,56 +47,127 @@ public class InteriorSceneManager : NetworkBehaviour
 
         Instance = this;
         DontDestroyOnLoad(gameObject);
+
+        // Initialize prefabLookup
+        prefabLookup = new Dictionary<InteriorCategory, List<GameObject>>();
+        foreach (var categorySet in roomCategories)
+        {
+            if (!prefabLookup.ContainsKey(categorySet.category))
+            {
+                prefabLookup[categorySet.category] = new List<GameObject>();
+            }
+
+            prefabLookup[categorySet.category].AddRange(categorySet.prefabs);
+        }
+    }
+
+
+    [ServerCallback]
+    void Update()
+    {
+        float now = Time.time;
+        float cleanupDelay = 15f;
+
+        for (int i = activeRooms.Count - 1; i >= 0; i--)
+        {
+            var room = activeRooms[i];
+            if (room.playersInside.Count == 0 && room.lastEmptyTime > 0f && now - room.lastEmptyTime > cleanupDelay)
+            {
+                NetworkServer.Destroy(room.instance);
+                activeRooms.RemoveAt(i);
+            }
+        }
+    }
+
+
+    [Server]
+    public void MovePlayerToInterior(NetworkIdentity conn, LootableObject door)
+    {
+        StartCoroutine(LoadAndTeleport(conn, door));
+    }
+
+
+    [Server]
+    IEnumerator LoadAndTeleport(NetworkIdentity conn, LootableObject door)
+    {
+        // Remove excess rooms
+        if (activeRooms.Count >= maxActiveRooms)
+        {
+            SpawnedRoom oldest = activeRooms[0];
+            NetworkServer.Destroy(oldest.instance);
+            activeRooms.RemoveAt(0);
+        }
+
+        if (!prefabLookup.TryGetValue(door.category, out var prefabList) || prefabList == null || prefabList.Count == 0)
+        {
+            Debug.LogWarning($"No prefabs found for category {door.category}");
+            yield break;
+        }
+
+        GameObject prefab = prefabList[Random.Range(0, prefabList.Count)];
+
+
+        // Calculate a new Y-position below the map
+        Vector3 position = new Vector3(0, -roomSpacing * (activeRooms.Count + 1), 0);
+
+        // Spawn and position
+        GameObject newRoom = Instantiate(prefab, position, Quaternion.identity);
+        NetworkServer.Spawn(newRoom);
+        door.SetLinkedRoom(newRoom);
+
+        yield return new WaitForSeconds(0.5f); // wait to spawn before teleporting
+
+        // Get spawn point inside room
+        Vector3 spawnPos = newRoom.GetComponentInChildren<LocationScript>().transform.position;
+        conn.transform.position = spawnPos;
+
+        // Track room
+        var room = new SpawnedRoom
+        {
+            instance = newRoom,
+            position = position,
+            category = door.category
+        };
+        room.playersInside.Add(conn);
+        activeRooms.Add(room);
+
     }
 
     [Server]
-    public void MovePlayerToInterior(NetworkIdentity conn, string sceneName)
+    public void TeleportPlayerToRoom(NetworkIdentity player, GameObject newRoom)
     {
-        StartCoroutine(LoadAndTeleport(conn, sceneName));
+        Vector3 spawnPos = newRoom.GetComponentInChildren<LocationScript>().transform.position;
+        player.transform.position = spawnPos;
+    }
+
+    [Server]
+    public void PlayerEnteredRoom(NetworkIdentity player, GameObject roomObj)
+    {
+        foreach (var room in activeRooms)
+        {
+            if (room.instance == roomObj)
+            {
+                room.playersInside.Add(player);
+                room.lastEmptyTime = -1f;
+            }
+        }
+    }
+
+    [Server]
+    public void PlayerExitedRoom(NetworkIdentity player, GameObject roomObj)
+    {
+        foreach (var room in activeRooms)
+        {
+            if (room.instance == roomObj)
+            {
+                room.playersInside.Remove(player);
+                if (room.playersInside.Count == 0)
+                    room.lastEmptyTime = Time.time;
+            }
+        }
     }
 
     
-    [Server]
-    IEnumerator LoadAndTeleport(NetworkIdentity conn, string sceneName)
-    {
-        if (!loadedScenes.Contains(sceneName))
-        {
-            AsyncOperation loadOp = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
-            while (!loadOp.isDone)
-                yield return null;
-
-            loadedScenes.Add(sceneName);
-        }
-        RpcLoadScene(conn.connectionToClient, conn, sceneName);
-        yield return new WaitForSeconds(0.5f);
-        RpcTeleportPlayer(conn.connectionToClient, conn);
-
-        // Vector3 spawnPos = GameObject.FindWithTag("InteriorSpawn").transform.position;
-
-        // // teleport on server
-        // conn.transform.position = spawnPos;
-        // NetworkTransform will replicate new position to that client
-
-    }
-    [TargetRpc]
-    void RpcLoadScene(NetworkConnectionToClient target, NetworkIdentity networkIdentity, string sceneName)
-    {
-        if (!SceneManager.GetSceneByName(sceneName).isLoaded)
-        {
-            SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
-        }
-
-    }
-
-    [TargetRpc]
-    void RpcTeleportPlayer(NetworkConnectionToClient target, NetworkIdentity networkIdentity)
-    {
-        Vector3 spawnPos = GameObject.FindWithTag("InteriorSpawn").transform.position;
-
-        // teleport on server
-        networkIdentity.transform.position = spawnPos;
-
-    }
 
     [Server]
     public void MovePlayerBack(NetworkIdentity conn)
