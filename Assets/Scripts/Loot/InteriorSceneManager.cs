@@ -114,6 +114,7 @@ public class InteriorSceneManager : NetworkBehaviour
         GameObject newRoom = Instantiate(prefab, position, Quaternion.identity);
         NetworkServer.Spawn(newRoom);
         door.SetLinkedRoom(newRoom);
+        SpawnLootables(newRoom);
 
         yield return new WaitForSeconds(0.5f); // wait to spawn before teleporting
 
@@ -131,6 +132,19 @@ public class InteriorSceneManager : NetworkBehaviour
         room.playersInside.Add(conn);
         activeRooms.Add(room);
 
+    }
+
+    [Server]
+    public void SpawnLootables(GameObject newRoom)
+    {
+        SpawnLootables spawnLootables = newRoom.GetComponent<SpawnLootables>();
+        if(spawnLootables != null){
+            foreach (var item in spawnLootables.LootBoxList)
+            {
+                GameObject loot = Instantiate(item.prebab, item.position.position, item.position.rotation);
+                NetworkServer.Spawn(loot);
+            }
+        }
     }
 
     [Server]

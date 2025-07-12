@@ -1,7 +1,8 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Mirror;
 
-public class InteriorZombieSpawner : MonoBehaviour
+public class InteriorZombieSpawner : NetworkBehaviour
 {
     [Tooltip("List of different zombie prefabs")]
     public List<GameObject> zombiePrefabs;
@@ -15,12 +16,13 @@ public class InteriorZombieSpawner : MonoBehaviour
     [Tooltip("Maximum number of zombies to spawn")]
     public int maxZombies = 10;
 
+[Server]
     private void Start()
     {
         SpawnZombies();
     }
     
-
+[Server]
     void SpawnZombies()
     {
         if (zombiePrefabs == null || zombiePrefabs.Count == 0 || spawnPoints.Length == 0)
@@ -39,10 +41,11 @@ public class InteriorZombieSpawner : MonoBehaviour
         {
             Transform spawnPoint = shuffledPoints[i % shuffledPoints.Count];
             GameObject randomZombie = zombiePrefabs[Random.Range(0, zombiePrefabs.Count)];
-            Instantiate(randomZombie, spawnPoint.position, spawnPoint.rotation);
+            GameObject zombie = Instantiate(randomZombie, spawnPoint.position, spawnPoint.rotation);
+            NetworkServer.Spawn(zombie);
         }
     }
-
+[Server]
     void ShuffleList(List<Transform> list)
     {
         for (int i = list.Count - 1; i > 0; i--)

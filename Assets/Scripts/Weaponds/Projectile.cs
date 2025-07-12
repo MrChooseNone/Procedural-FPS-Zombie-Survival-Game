@@ -25,6 +25,10 @@ public class ProjectileBullet : NetworkBehaviour
     {
         shooterIdentity = shooter;
     }
+	public void SetDamage(int amount)
+    {
+		damage = amount;
+    }
 	
 
 

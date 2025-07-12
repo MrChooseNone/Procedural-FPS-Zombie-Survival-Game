@@ -198,6 +198,11 @@ public class WeaponController : NetworkBehaviour
             // Start reload
             CmdReload();
         }
+        if (Input.GetKeyDown(KeyCode.U) && reloadTimeLeft <= 0 && currentAmmo > 0)
+        {
+            
+            CmdUnload();
+        }
 
         // Update reload timer if necessary
         if (reloadTimeLeft > 0)
@@ -298,6 +303,8 @@ public class WeaponController : NetworkBehaviour
         fireSource.PlayOneShot(pickupSound);
 
     }
+
+    
     [ClientRpc]
     void RpcPickup(NetworkIdentity player) {
         WeaponPickupController playerPickup= player.GetComponent<WeaponPickupController>();
@@ -392,6 +399,32 @@ public class WeaponController : NetworkBehaviour
         inventory.CmdRemoveItem(bulletStack.uniqueKey, reloadAmount);
         currentAmmo += reloadAmount;
     }
+    
+    [Command]
+    public void CmdUnload()
+    {
+        
+        if(!isMelee){
+
+            RpcUnloadBullets(identityPlayer.connectionToClient, inventory);
+            
+            RpcPlayReloadAnimation(); // Play the reload animation
+        }
+    }
+
+    [TargetRpc]
+    private void RpcUnloadBullets(NetworkConnectionToClient target,InventoryManager1 inventory){
+        // Prevent reloading if it's already in progress
+        if (reloadTimeLeft > 0)
+            return;
+
+        reloadTimeLeft = reloadTime;  // Set the reload time to start
+            
+        
+        Debug.Log("unload amount" + currentAmmo);
+        inventory.CmdAddItem("Bullet", currentAmmo, true);
+        currentAmmo = 0;
+    }
     // [TargetRpc]
     // private int RpcGetBulletCount(NetworkConnectionToClient target,InventoryManager1 inventory)
     // {
@@ -399,7 +432,7 @@ public class WeaponController : NetworkBehaviour
     //     {
     //         ItemStack bulletStack = inventory.GetItem("Bullet");
     //         return bulletStack.quantity;
-            
+
     //     }
     //     return 0; // No bullets found
     // }
@@ -486,7 +519,9 @@ public class WeaponController : NetworkBehaviour
                 Debug.Log("call shake");
                 shake.Shake(magnitude, duration);
             }
-            bullet.GetComponent<ProjectileBullet>().SetShooter(identityPlayer);
+            ProjectileBullet projectileBullet = bullet.GetComponent<ProjectileBullet>();
+            projectileBullet.SetShooter(identityPlayer);
+            projectileBullet.SetDamage(damage);
             RpcPlayFireAnimation(0);
             spawnCasing();
             soundEmitter.EmittSound(50);

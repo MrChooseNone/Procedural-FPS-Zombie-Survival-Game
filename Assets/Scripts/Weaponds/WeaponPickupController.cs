@@ -68,10 +68,17 @@ public class WeaponPickupController : NetworkBehaviour
     {
         if (!isLocalPlayer) return;
 
-        if (Input.GetKeyDown(KeyCode.E) && canPickup && equippedGun == null) // Pickup Gun
+        if (Input.GetKeyDown(KeyCode.E) && canPickup) // Pickup Gun
         {
             Debug.Log("tried to pickup gun");
-            StartCoroutine(TryPickupGun(currentGun));
+            if (equippedGun == null)
+            {
+                StartCoroutine(TryPickupGun(currentGun));
+            }
+            else
+            {
+                TryPutGunInventory(currentGun);
+            }
         }
 
         if (Input.GetKeyDown(KeyCode.Q) && equippedGun != null) // Drop Gun
@@ -115,10 +122,10 @@ public class WeaponPickupController : NetworkBehaviour
                 // Update the current gun and show the popup for the new gun
                 canPickup = true;
                 currentGun = newGun;
-                if(equippedGun== null){
+                //if(equippedGun== null){
 
                     currentGun.ShowPopup(transform);
-                }
+                //}
             }
         }
         else
@@ -179,6 +186,26 @@ public class WeaponPickupController : NetworkBehaviour
                 // Optionally hide any pickup prompt
                 // HidePickupPrompt();
             }
+        
+    }
+
+    void TryPutGunInventory(WeaponController gun)
+    {
+        
+            // if (gun != null)
+            // {
+                Debug.Log("gun is not null");
+                NetworkIdentity player = GetComponent<NetworkIdentity>();
+                //CmdRequestAuthority(gun.netIdentity, player);
+                
+
+                // Call the CmdPickup method to pick up the gun on the server
+                ItemPickup itemPickup = gun.gameObject.GetComponent<ItemPickup>();
+                if (itemPickup != null)
+                {
+                    itemPickup.LoadGunInInventory(player);
+                }
+            //}
         
     }
     [Command(requiresAuthority = false)]

@@ -53,6 +53,7 @@ public class PlayerBuilding : NetworkBehaviour
         public int unlockLevel; // unlock requirement
         public List<ResourceCost> itemCosts;
         public Color color;
+        public string tooltipText;
     }
 
     private List<BuildItem> unlockedItems = new List<BuildItem>();
@@ -157,9 +158,14 @@ public class PlayerBuilding : NetworkBehaviour
             var item = unlockedItems[i];
             GameObject buttonObj = Instantiate(buttonPrefab, gridParent);
             var icon = buttonObj.GetComponentInChildren<Image>();
+            TooltipTrigger tooltip = buttonObj.GetComponentInChildren<TooltipTrigger>();
             icon.sprite = item.icon;
             icon.rectTransform.localScale = icon.rectTransform.localScale * itemSize;
             icon.color = item.color;
+            if (tooltip != null)
+            {
+                tooltip.tooltipText = item.tooltipText;
+            }
 
             var btn = buttonObj.GetComponent<Button>();
             var btnText = buttonObj.GetComponentInChildren<TextMeshProUGUI>();
