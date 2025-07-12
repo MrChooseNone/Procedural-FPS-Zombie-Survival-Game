@@ -42,6 +42,7 @@ class BuildingMaker : InfrastructureBehaviour
     public GameObject[] frames;
     public GameObject[] props;
     public float thick_ness;
+    public GameObject diffPrefab;
 
     IEnumerator Start()
     {
@@ -55,7 +56,7 @@ class BuildingMaker : InfrastructureBehaviour
         foreach (var way in map.ways.FindAll((w) => { return w.IsBuilding && w.NodeIDs.Count > 1; }))
         {
             // Create the object
-            CreateObject(way, building, "Building");
+            CreateObject(way, building, "Building", null, null, null, false, diffPrefab);
             yield return null;
         }
         isFinished = true;

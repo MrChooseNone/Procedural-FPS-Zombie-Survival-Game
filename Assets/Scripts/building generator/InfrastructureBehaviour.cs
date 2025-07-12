@@ -78,7 +78,7 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
 
   
     [Server]
-    protected void CreateObject(OsmWay way, Material mat, string objectName, GameObject prefab = null, GameObject[] prefabArray= null, GameObject[] carArray= null, bool single = false)
+    protected void CreateObject(OsmWay way, Material mat, string objectName, GameObject prefab = null, GameObject[] prefabArray= null, GameObject[] carArray= null, bool single = false, GameObject diffPrefab = null)
     {
         // Make sure we have some name to display
         objectName = string.IsNullOrEmpty(objectName) ? "OsmWay" : objectName;
@@ -101,72 +101,92 @@ abstract class InfrastructureBehaviour : NetworkBehaviour
             }
         }
         else{
-            spawnMesh(way, localOrigin, objectName, mat);
+            spawnMesh(way, localOrigin, objectName, mat, diffPrefab);
         }
-        
     }
     IEnumerator Delay(){
         yield return new WaitForSeconds(.3f);
     }
 
-    private void spawnMesh(OsmWay way, Vector3 localOrigin, string objectName, Material mat){
+    private void spawnMesh(OsmWay way, Vector3 localOrigin, string objectName, Material mat, GameObject diffPrefab = null){
         GameObject go;
          
         go = new GameObject(objectName);
-            go.transform.position = localOrigin - map.bounds.Centre;
-            if(objectName == "Building"){
-                // go.AddComponent<BuildingInteraction>();
+        go.transform.position = localOrigin - map.bounds.Centre;
+        if(objectName == "Building"){
+            // go.AddComponent<BuildingInteraction>();
 
-                // Optional: Set tag or other properties
-                go.tag = "Building";
-                go.AddComponent<BuildingInteriorLink>();
-            }
+            // Optional: Set tag or other properties
+            go.tag = "Building";
+            go.AddComponent<BuildingInteriorLink>();
+        }
 
-            // Add the mesh filter and renderer components to the object
-            MeshFilter mf = go.AddComponent<MeshFilter>();
-            MeshRenderer mr = go.AddComponent<MeshRenderer>();
-            MeshCollider mc = go.AddComponent<MeshCollider>();
+        // Add the mesh filter and renderer components to the object
+        MeshFilter mf = go.AddComponent<MeshFilter>();
+        MeshRenderer mr = go.AddComponent<MeshRenderer>();
+        MeshCollider mc = go.AddComponent<MeshCollider>();
 
-            // Apply the material
+        // Apply the material
 
-            // Create the collections for the object's vertices, indices, UVs etc.
-            List<Vector3> vectors = new List<Vector3>();
-            List<Vector3> normals = new List<Vector3>();
-            List<Vector2> uvs = new List<Vector2>();
-            List<int> indices = new List<int>();
+        // Create the collections for the object's vertices, indices, UVs etc.
+        List<Vector3> vectors = new List<Vector3>();
+        List<Vector3> normals = new List<Vector3>();
+        List<Vector2> uvs = new List<Vector2>();
+        List<int> indices = new List<int>();
 
-            // Call the child class' object creation code
-            OnObjectCreated(way, localOrigin, vectors, normals, uvs, indices);
-            // Debug.Log("ver: "+ vectors.Count);
-            // Debug.Log("nor: "+ normals.Count);
-            // Debug.Log("ind: "+ indices.Count);
-            // Debug.Log("uvs: "+ uvs.Count);
-            // Apply the data to the mesh
-            mf.mesh.vertices = vectors.ToArray();
-            mf.mesh.normals = normals.ToArray();
-            mf.mesh.triangles = indices.ToArray();
-            mf.mesh.uv = uvs.ToArray();
+        // Call the child class' object creation code
+        OnObjectCreated(way, localOrigin, vectors, normals, uvs, indices);
+        // Debug.Log("ver: "+ vectors.Count);
+        // Debug.Log("nor: "+ normals.Count);
+        // Debug.Log("ind: "+ indices.Count);
+        // Debug.Log("uvs: "+ uvs.Count);
+        // Apply the data to the mesh
+        mf.mesh.vertices = vectors.ToArray();
+        mf.mesh.normals = normals.ToArray();
+        mf.mesh.triangles = indices.ToArray();
+        mf.mesh.uv = uvs.ToArray();
 
-            //mf.mesh.RecalculateNormals();
+        //mf.mesh.RecalculateNormals();
 
-            mc.sharedMesh = mf.mesh;
-            mr.material = mat;
-            //AdjustBuildingHeight(go);
+        mc.sharedMesh = mf.mesh;
+        mr.material = mat;
+        //AdjustBuildingHeight(go);
 
-            if (Rmaker.Roadflag == true){
-                go.transform.position += new Vector3(0, 0.1f, 0);
-                go.tag = "Road";
-                go.layer = 16;
-                Rmaker.Roadflag = false;
-            }
-            // Add a NetworkIdentity component to make the object network-aware
-            if (!go.TryGetComponent<NetworkIdentity>(out var networkIdentity))
+        if (!go.TryGetComponent<NetworkIdentity>(out var networkIdentity))
+        {
+            go.AddComponent<NetworkIdentity>();
+        }
+        if (diffPrefab != null)
+        {
+            GameObject difficultPrefab = Instantiate(diffPrefab, Vector3.zero, Quaternion.identity);
+
+            //difficultPrefab.transform.SetParent(go.transform, worldPositionStays: true);
+            difficultPrefab.transform.position = go.transform.position;
+            
+
+            //difficultPrefab.transform.localPosition = Vector3.up * 2f; 
+            BuildingDifficult buildingDifficult = difficultPrefab.GetComponent<BuildingDifficult>();
+            if (buildingDifficult != null)
             {
-                go.AddComponent<NetworkIdentity>();
+                buildingDifficult.buildingRenderer = mr;
+                buildingDifficult.CalculateDifficulty();
             }
-            go.isStatic = true;
-            NetworkManager.singleton.spawnPrefabs.Add(go);
-            NetworkServer.Spawn(go);
+
+            // Spawn on network
+            NetworkServer.Spawn(difficultPrefab);
+        }
+
+        if (Rmaker.Roadflag == true)
+        {
+            go.transform.position += new Vector3(0, 0.1f, 0);
+            go.tag = "Road";
+            go.layer = 16;
+            Rmaker.Roadflag = false;
+        }
+        // Add a NetworkIdentity component to make the object network-aware
+        go.isStatic = true;
+        NetworkManager.singleton.spawnPrefabs.Add(go);
+        NetworkServer.Spawn(go);
     }
 
     private void SpawnPrefabs(OsmWay way, Vector3 localOrigin, GameObject prefab, string objectName, bool isRoad = false, GameObject[] prefabArray = null, GameObject[] carArray= null, bool single = false){

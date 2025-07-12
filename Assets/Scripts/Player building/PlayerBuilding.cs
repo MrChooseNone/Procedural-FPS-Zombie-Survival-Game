@@ -213,36 +213,43 @@ public class PlayerBuilding : NetworkBehaviour
     {
         if (!isLocalPlayer) return;
 
-        Destroy(previewPrefab);
-        bool isPayed = true;
-        foreach (ResourceCost itemCost in currentItem.itemCosts)
+        RaycastHit hit;
+
+        if (Physics.Raycast(prefab.transform.position, Vector3.down, out hit, 10f))
         {
-            ItemStack itemStack = inventory.FindItemByName(itemCost.resourceName);
-            if (itemStack.itemName != null)
+            
+            Destroy(previewPrefab);
+            bool isPayed = true;
+            foreach (ResourceCost itemCost in currentItem.itemCosts)
             {
-                if (itemStack.quantity >= itemCost.amount)
+                ItemStack itemStack = inventory.FindItemByName(itemCost.resourceName);
+                if (itemStack.itemName != null)
                 {
-                    inventory.CmdRemoveItem(itemStack.uniqueKey, itemCost.amount);
+                    if (itemStack.quantity >= itemCost.amount)
+                    {
+                        inventory.CmdRemoveItem(itemStack.uniqueKey, itemCost.amount);
+                    }
+                    else
+                    {
+                        isPayed = false;
+                    }
                 }
                 else
                 {
                     isPayed = false;
                 }
             }
-            else
+            if (isPayed)
             {
-                isPayed = false;
+                if (playerSkills != null)
+                {
+                    playerSkills.GainXP(SkillType.Engineering, 20f);
+                }
+                CmdSpawnWall(prefab.transform.position, prefab.transform.rotation, currentItem.name);   
             }
+            isPlacing = false;
         }
-        if (isPayed)
-        {
-            if (playerSkills != null)
-            {
-                playerSkills.GainXP(SkillType.Engineering, 20f);
-            }
-            CmdSpawnWall(prefab.transform.position, prefab.transform.rotation, currentItem.name);   
-        }
-        isPlacing = false;
+
         
     }
 
